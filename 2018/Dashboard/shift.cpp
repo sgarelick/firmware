@@ -8,6 +8,7 @@ void digitEnable(int);
 void draw();
 void draw();
 void shiftOut(int, int, byte);
+void startupAnimation(void);
 
 static int putChar(char c)
 {
@@ -33,7 +34,108 @@ void initShift()
   pinMode(latchPin, OUTPUT);
   srdata.sr[0] = srdata.sr[1] = srdata.sr[2] = 0;
   srdata.data.seg1 = srdata.data.seg2 = srdata.data.seg3 = srdata.data.seg4 = 1;
-  strcpy(str, "0000");
+  //strcpy(str, "0000");
+  strcpy(str, "----");
+  startupAnimation();
+  startupAnimation();
+  startupAnimation();
+}
+
+static void startupAnimation()
+{
+  srdata.data.g1 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g1 = 0;
+  srdata.data.g2 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g2 = 0;
+  srdata.data.g3 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g3 = 0;
+  srdata.data.g4 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g4 = 0;
+  srdata.data.r1 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r1 = 0;
+  srdata.data.r2 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r2 = 0;
+  srdata.data.r3 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r3 = 0;
+  srdata.data.r4 = 1;
+  shiftUpdate();
+  srdata.data.r4 = 0;
+  srdata.data.b1 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b1 = 0;
+  srdata.data.b2 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b2 = 0;
+  srdata.data.b3 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b3 = 0;
+  srdata.data.b4 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b4 = 0;
+  srdata.data.b3 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b3 = 0;
+  srdata.data.b2 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b2 = 0;
+  srdata.data.b1 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.b1 = 0;
+  srdata.data.r4 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r4 = 0;
+  srdata.data.r3 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r3 = 0;
+  srdata.data.r2 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r2 = 0;
+  srdata.data.r1 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.r1 = 0;
+  srdata.data.g4 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g4 = 0;
+  srdata.data.g3 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g3 = 0;
+  srdata.data.g2 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g2 = 0;
+  srdata.data.g1 = 1;
+  shiftUpdate();
+  delay(2);
+  srdata.data.g1 = 0;
+  shiftUpdate();
+  delay(2);
 }
 
 static void draw()
