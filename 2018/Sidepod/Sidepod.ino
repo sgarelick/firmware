@@ -23,8 +23,11 @@ const int rxPinXBee = A4;
 const int txPinXBee = A5;
 
 const bool sd_logging = true;
-const int sd_pin = 10;
+const int sd_pin = 7;
 bool sd_working = false;
+
+File canfile;
+File gpsfile;
 
 SoftwareSerial XBee_Serial(rxPinXBee,txPinXBee);
 PacketSender XBee(XBee_Serial, 9600);
@@ -65,18 +68,38 @@ void setup() {
   CAN0.setMode(MCP_NORMAL); // send acknowledgements to recieved data
   pinMode(CAN0_INT, INPUT);
   
-  GPS.begin(9600);
+  //GPS.begin(9600);
   
   // RMC (recommended minimum) and GGA (fix data) including altitude
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   // Set the update rate
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);   // 1 Hz update rate
+  //GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);   // 1 Hz update rate
   // Request updates on antenna status, comment out to keep quiet
-  GPS.sendCommand(PGCMD_ANTENNA);
+  //GPS.sendCommand(PGCMD_ANTENNA);
 
   if (sd_logging) {
     if (SD.begin(sd_pin)) {
       sd_working = true;
+      char filename[] = "CAN00.TXT";
+      for (uint8_t i = 0; i < 100; i++) {
+        filename[3] = i/10 + '0';
+        filename[4] = i%10 + '0';
+        if (! SD.exists(filename)) {
+          // only open a new file if it doesn't exist
+          canfile = SD.open(filename, FILE_WRITE); 
+          break;  // leave the loop!
+        }
+      }
+      /*char gpsfilename[] = "GPS00.TXT";
+      for (uint8_t i = 0; i < 100; i++) {
+        gpsfilename[3] = i/10 + '0';
+        gpsfilename[4] = i%10 + '0';
+        if (! SD.exists(gpsfilename)) {
+          // only open a new file if it doesn't exist
+          gpsfile = SD.open(gpsfilename, FILE_WRITE); 
+          break;  // leave the loop!
+        }
+      }*/
       if (DEBUG)
         Serial.println(F("SD card initialized"));
     } else {
@@ -85,7 +108,7 @@ void setup() {
     }
   }
 
-  delay(500);
+  delay(5000);
 }
 
 void loop() {
@@ -93,7 +116,7 @@ void loop() {
   int rawRPM, rawLoad, rawThrottle, coolantC, rawIntake, rawo2, rawSpeed, rawVolts, rawIgn, rawRB, rawFB;
   float rpm, load, throttle, coolantF, intake, o2, vehicleSpeed, volts, ign, rearBrake, frontBrake;
   byte gear;
-  if (GPS.newNMEAreceived()) {
+  /*if (GPS.newNMEAreceived()) {
     // a tricky thing here is if we print the NMEA sentence, or data
     // we end up not listening and catching other sentences! 
     // so be very wary if using OUTPUT_ALLDATA and trytng to print out data
@@ -110,11 +133,12 @@ void loop() {
       outgoing.intData = GPS.longitude_fixed;
       XBee.sendPayloadTimestamp(outgoing, 0x43);
     }
-  }
+  }*/
 
   if (!digitalRead(CAN0_INT)) {
     //Serial.println("got data");
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
+    Serial.println(rxId, HEX);
     log_can_data();
       switch (rxId & 0x1FFFFFFF) {
 
@@ -241,18 +265,17 @@ void log_can_data()
   if (!sd_working)
     return;
   int i;
-  File file = SD.open("can.txt", FILE_WRITE);
-  if (file) {
-    file.println();
-    file.println("FSAE");
-    update_time();
-    file.println(timestr);
-    file.println(rxId);
-    file.println(len);
+  if (canfile) {
+    canfile.println();
+    canfile.println("FSAE");
+    //update_time();
+    canfile.println(millis());
+    canfile.println(rxId & 0x1FFFFFFF);
+    canfile.println(len);
     for (i = 0; i < len; i++) {
-      file.write(rxBuf[i]);
+      canfile.write(rxBuf[i]);
     }
-    file.close();
+    canfile.flush();
   }
 }
 
@@ -261,16 +284,15 @@ void log_gps_data()
   if (!sd_working)
     return;
   int i;
-  File file = SD.open("gps.txt", FILE_WRITE);
-  if (file) {
+  if (gpsfile) {
     update_time();
-    file.print(timestr);
-    file.print(",");
-    file.print(GPS.latitude);
-    file.print(",");
-    file.print(GPS.longitude);
-    file.println();
-    file.close();
+    gpsfile.print(timestr);
+    gpsfile.print(",");
+    gpsfile.print(GPS.latitude);
+    gpsfile.print(",");
+    gpsfile.print(GPS.longitude);
+    gpsfile.println();
+    gpsfile.flush();
   }
 }
 
