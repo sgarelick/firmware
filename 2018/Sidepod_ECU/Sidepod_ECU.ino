@@ -12,18 +12,18 @@
 #define CAN0_INT 4
 MCP_CAN CAN0(10);
 
-const int sd_select = 9;
+const int sd_select = 7;
 
-//const int rxPinXBee = A3;
-//const int txPinXBee = A4;
+const int rxPinXBee = A3;
+const int txPinXBee = A4;
 
-/*const int INNER_PRESSURE = A0;
+const int INNER_PRESSURE = A0;
 const int acc1Pin = A1;
 const int acc2Pin = A2;
-const int acc3Pin = A5;*/
+const int acc3Pin = A5;
 
-//SoftwareSerial XBee_Serial(rxPinXBee,txPinXBee);
-//PacketSender XBee(XBee_Serial, 9600);
+SoftwareSerial XBee_Serial(rxPinXBee,txPinXBee);
+PacketSender XBee(XBee_Serial, 9600);
 
 File logfile;
 
@@ -99,7 +99,7 @@ void setup() {
     return;
   }
   Serial.println("card initialized.");
-  
+
   char filename[] = "LOG000.CSV";
   for (uint16_t i = 0; i < 1000; i++) {
     filename[3] = i / 100 + '0';
@@ -189,10 +189,8 @@ void loop() {
   }*/
 
   if (!digitalRead(CAN0_INT)) {
-    //Serial.println("got data");
     unsigned long timestamp = millis();
     CAN0.readMsgBuf(&rxId, &len, rxBuf);
-    //Serial.println(rxId, HEX);
     
     payload outgoing;
 
@@ -208,7 +206,7 @@ void loop() {
     logfile.println();
     logfile.flush();
 
-    /*switch (rxId & 0x1FFFFFFF) {
+    switch (rxId & 0x1FFFFFFF) {
 
       case ID_AEMEngine0: {
 
@@ -225,11 +223,11 @@ void loop() {
           XBee.sendPayloadTimestamp(outgoing, 0x31);
           //Display.sendPayload(outgoing, 0x31);
 
-          int rawMAP = GET_AEMEngine0_MAP(rxBuf);
-          float mapP = CALC_AEMEngine0_MAP(rawMAP, 1.0);
+          //int rawMAP = GET_AEMEngine0_MAP(rxBuf);
+          //float mapP = CALC_AEMEngine0_MAP(rawMAP, 1.0);
 
-          outgoing.floatData = mapP;
-          XBee.sendPayloadTimestamp(outgoing, 0x52);
+          //outgoing.floatData = mapP;
+          //XBee.sendPayloadTimestamp(outgoing, 0x52);
 
           //log throttle position
           int rawThrottle = GET_AEMEngine0_ThrottlePos(rxBuf);
@@ -258,7 +256,7 @@ void loop() {
           //dataLine = "O2_SPEED_GEAR_VOLTAGE, ";
           //log O2
           /*uint8_t rawo2 = (uint8_t)rxBuf[0];
-          o2 = rawo2 * O2_SCALE + 0.5;
+          o2 = rawo2 * O2_SCALE + 0.5;*/
           //dataLine = dataLine + o2 +  ", ";
 
           int rawo2 = GET_AEMEngine3_AFR1(rxBuf);
@@ -269,7 +267,7 @@ void loop() {
 
           /*uint16_t rawSpeed = (uint16_t)rxBuf[2] << 8;
           rawSpeed |= rxBuf[3];
-          vehicleSpeed = rawSpeed * SPEED_SCALE;
+          vehicleSpeed = rawSpeed * SPEED_SCALE;*/
           //dataLine = dataLine + vehicleSpeed + ", ";
 
           int rawSpeed = GET_AEMEngine3_VehicleSpeed(rxBuf);
@@ -317,7 +315,7 @@ void loop() {
           Serial.print(frontBrake);
           Serial.print("\t");
           Serial.print("REAR:");
-          Serial.println(rearBrake);
+          Serial.println(rearBrake);*/
           
       }
 
@@ -342,6 +340,6 @@ void loop() {
           break;
       }
         
-    }*/
+    }
   }
 }

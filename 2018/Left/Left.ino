@@ -17,8 +17,14 @@ unsigned long canAccumulator = 0;
 unsigned long readDeltaTime = 3333;
 unsigned long readAccumulator = 0;
 
-const int frontBrakePin = A4;
-const int rearBrakePin = A5;
+const int topPin = A2;
+const int bottomPin = A3;
+
+const int gyroPin1 = A0;
+const int gyroPin2 = A1;
+
+const int leftPotPin = A5;
+const int rightPotPin = A4;
 
 void setup() {
   Serial.begin(9600);
@@ -36,26 +42,36 @@ void setup() {
 
 }
 
-int frontReading;
-int rearReading;
-int acc1;
-int acc2;
-int acc3
+int topReading;
+int bottomReading;
+int gyroReading1;
+int gyroReading2;
+int leftPotReading;
+int rightPotReading;
 byte data[8];
 
 void loop() {
   if (micros() > readAccumulator){
-    frontReading = analogRead(frontBrakePin);
-    rearReading = analogRead(rearBrakePin);
+    topReading = analogRead(topPin);
+    bottomReading = analogRead(bottomPin);
+    gyroReading1 = analogRead(gyroPin1);
+    gyroReading2 = analogRead(gyroPin2);
+    leftPotReading = analogRead(leftPotPin);
+    rightPotReading = analogRead(rightPotPin);
+    
     readAccumulator += readDeltaTime;
   }
 
   if (micros() > canAccumulator){
-    INIT_RearController0(data);
-    SET_RearController0_RearBrakePressure(data, rearReading);
-    SET_RearController0_FrontBrakePressure(data, frontReading);
+    INIT_LeftController0(data);
+    SET_LeftController0_RadiatorTopTemp(data, topReading);
+    SET_LeftController0_RadiatorBottomTemp(data, bottomReading);
+    SET_LeftController0_CGGyroscope(data, gyroReading1);
+    SET_LeftController0_FrontGyroscope(data, gyroReading2);
+    SET_LeftController0_LeftDamperTravel(data, leftPotReading);
+    SET_LeftController0_RightDamperTravel(data, rightPotReading);
 
-    byte sndStat = CAN0.sendMsgBuf(ID_RearController0, 1, 8, data);
+    byte sndStat = CAN0.sendMsgBuf(ID_LeftController0, 1, 8, data);
       if(sndStat == CAN_OK){
     Serial.println("Message Sent Successfully!");
   } else {

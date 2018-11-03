@@ -11,14 +11,20 @@
 #define CAN0_INT 4
 MCP_CAN CAN0(10);
 
-unsigned long canDeltaTime = 4000;
+unsigned long canDeltaTime = 50;
 unsigned long canAccumulator = 0;
 
-unsigned long readDeltaTime = 3333;
+unsigned long readDeltaTime = 4000;
 unsigned long readAccumulator = 0;
 
-const int frontBrakePin = A4;
-const int rearBrakePin = A5;
+const int frontBrakePin = A1;
+const int rearBrakePin = A0;
+
+const int acc1Pin = A2;
+const int acc2Pin = A3;
+const int acc3Pin = A5;
+
+const int mapPin = A4;
 
 void setup() {
   Serial.begin(9600);
@@ -40,22 +46,31 @@ int frontReading;
 int rearReading;
 int acc1;
 int acc2;
-int acc3
+int acc3;
+int innerMap;
 byte data[8];
 
 void loop() {
   if (micros() > readAccumulator){
     frontReading = analogRead(frontBrakePin);
     rearReading = analogRead(rearBrakePin);
+    acc1 = analogRead(acc1Pin);
+    acc2 = analogRead(acc2Pin);
+    acc3 = analogRead(acc3Pin);
+    innerMap = analogRead(mapPin);
     readAccumulator += readDeltaTime;
   }
 
   if (micros() > canAccumulator){
-    INIT_RearController0(data);
-    SET_RearController0_RearBrakePressure(data, rearReading);
-    SET_RearController0_FrontBrakePressure(data, frontReading);
+    INIT_RightController0(data);
+    SET_RightController0_RearBrakePressure(data, rearReading);
+    SET_RightController0_FrontBrakePressure(data, frontReading);
+    SET_RightController0_CGAcc1(data, acc1);
+    SET_RightController0_CGAcc2(data, acc2);
+    SET_RightController0_CGAcc3(data, acc3);
+    SET_RightController0_InnerManifoldPressure(data, innerMap);
 
-    byte sndStat = CAN0.sendMsgBuf(ID_RearController0, 1, 8, data);
+    byte sndStat = CAN0.sendMsgBuf(ID_RightController0, 1, 8, data);
       if(sndStat == CAN_OK){
     Serial.println("Message Sent Successfully!");
   } else {
