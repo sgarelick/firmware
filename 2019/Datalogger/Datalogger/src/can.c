@@ -46,6 +46,7 @@ void configure_can(void)
 	et_filter.F1.reg = CAN_EXTENDED_MESSAGE_FILTER_ELEMENT_F1_EFID2(0) | CAN_EXTENDED_MESSAGE_FILTER_ELEMENT_F1_EFT_CLASSIC;
 	can_set_rx_extended_filter(&can_instance, &et_filter, 0);
 	
+	can_enable_interrupt(&can_instance, CAN_RX_FIFO_0_NEW_MESSAGE);
 	can_enable_interrupt(&can_instance, CAN_RX_FIFO_1_NEW_MESSAGE);
 
 }
@@ -94,11 +95,13 @@ void CAN0_Handler(void)
 		if (standard_receive_index == CONF_CAN0_RX_FIFO_0_NUM) {
 			standard_receive_index = 0;
 		}
-		printf("\n\r Standard message received in FIFO 0. The received data is: \r\n");
 		for (i = 0; i < rx_element_fifo_0.R1.bit.DLC; i++) {
-			printf("  %d",rx_element_fifo_0.data[i]);
+			// store data
+			canline.id = CAN_RX_ELEMENT_R0_ID(rx_element_fifo_0.R0.bit.ID)>>18;
+			canline.data.arr[i] = rx_element_fifo_0.data[i];
+			canline.ts = CAN_RX_ELEMENT_R1_RXTS(rx_element_buffer.R1.bit.RXTS);
 		}
-		printf("\r\n\r\n");
+		canline_updated = 1;
 	}
 	
 	

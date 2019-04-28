@@ -32,7 +32,7 @@
 
 static struct can_module can_instance;
 struct adc_module adc_instance;
-#define ADC_SAMPLES 1
+#define ADC_SAMPLES 8
 uint16_t adc_result_buffer[ADC_SAMPLES];
 
 static void configure_can(void)
@@ -68,24 +68,14 @@ static void can_send_standard_message(uint32_t id_value, uint8_t *data, uint32_t
 	can_set_tx_buffer_element(&can_instance, &tx_element, buffer);
 	can_tx_transfer_request(&can_instance, 1 << buffer);
 }
+	volatile uint8_t seqst;
+	volatile bool busy;
 
 volatile int sensor_id;
 volatile int sensor_ready;
 volatile uint16_t sensor_data[6];
-void adc_complete_callback(struct adc_module *const module)
-{
-	uint16_t result;
-	int res = adc_read(adc_module, &result);
-	if (res == STATUS_OK) {
-		sensor_data[sensor_id] = result;
-	} else {
-		sensor_data[sensor_id] = 0;
-	}
-	if (++sensor_id >= 6) {
-		sensor_id = 0;
-		sensor_ready = 1;
-	}
-}
+
+
 
 void configure_adc(void)
 {
@@ -99,40 +89,73 @@ void configure_adc(void)
 	adc_enable(&adc_instance);
 }
 
-void configure_adc_callbacks(void)
-{
-	adc_register_callback(&adc_instance, adc_complete_callback, ADC_CALLBACK_READ_BUFFER);
-	adc_enable_callback(&adc_instance, ADC_CALLBACK_READ_BUFFER);
-}
-
+int ledstate;
 
 int main (void)
 {
-	uint8_t data[8];
 	system_init();
+	delay_init();
+	
+		uint8_t data[8];
+
 	
 	configure_can();
 	configure_adc();
-	configure_adc_callbacks();
 
-	/* Insert application code here, after the board has been initialized. */
+	
+	struct system_pinmux_config config;
+	system_pinmux_get_config_defaults(&config);
+	config.direction = SYSTEM_PINMUX_PIN_DIR_INPUT;
+	config.mux_position = 1;
+	system_pinmux_pin_set_config(PIN_PA02, &config);
+	system_pinmux_pin_set_config(PIN_PA03, &config);
+	system_pinmux_pin_set_config(PIN_PA04, &config);
+	system_pinmux_pin_set_config(PIN_PA05, &config);
+	system_pinmux_pin_set_config(PIN_PA06, &config);
+	system_pinmux_pin_set_config(PIN_PA07, &config);
+	
+
+
 	sensor_id = 0;
 	sensor_data[0] = sensor_data[1] = sensor_data[2] = sensor_data[3] =	sensor_data[4] = sensor_data[5] = 0;
 	sensor_ready = 0;
-	adc_enable_positive_input_sequence(adc_module, 0x000000FE); // enable sequence of pins 0,1,4,5,6,7
-	
+
 	while(1) {
-		while(sensor_ready) {
-			INIT_DataLogger3(data);
-			SET_DataLogger3_Analog1(data, sensor_data[0]);
-			SET_DataLogger3_Analog2(data, sensor_data[1]);
-			SET_DataLogger3_Analog3(data, sensor_data[2]);
-			SET_DataLogger3_Analog4(data, sensor_data[3]);
-			SET_DataLogger3_Analog5(data, sensor_data[4]);
-			SET_DataLogger3_Analog6(data, sensor_data[5]);
-			can_send_standard_message(ID_DataLogger3, data, 8);
-			sensor_ready = 0;
-		}
+		adc_set_negative_input(&adc_instance, ADC_NEGATIVE_INPUT_GND);
+		adc_set_positive_input(&adc_instance, ADC_POSITIVE_INPUT_PIN0 );
+		adc_start_conversion(&adc_instance);
+		while (adc_read(&adc_instance, sensor_data + 0) == STATUS_BUSY) ;
+		adc_set_positive_input(&adc_instance, ADC_POSITIVE_INPUT_PIN1);
+		adc_start_conversion(&adc_instance);
+		while (adc_read(&adc_instance, sensor_data + 1) == STATUS_BUSY) ;
+		adc_set_positive_input(&adc_instance, ADC_POSITIVE_INPUT_PIN4);
+		adc_start_conversion(&adc_instance);
+		while (adc_read(&adc_instance, sensor_data + 2) == STATUS_BUSY) ;
+		adc_set_positive_input(&adc_instance, ADC_POSITIVE_INPUT_PIN5);
+		adc_start_conversion(&adc_instance);
+		while (adc_read(&adc_instance, sensor_data + 3) == STATUS_BUSY) ;
+		adc_set_positive_input(&adc_instance, ADC_POSITIVE_INPUT_PIN6);
+		adc_start_conversion(&adc_instance);
+		while (adc_read(&adc_instance, sensor_data + 4) == STATUS_BUSY) ;
+		adc_set_positive_input(&adc_instance, ADC_POSITIVE_INPUT_PIN7);
+		adc_start_conversion(&adc_instance);
+		while (adc_read(&adc_instance, sensor_data + 5) == STATUS_BUSY) ;
+		
+		delay_ms(20);
+		
+		port_pin_set_output_level(LED_0_PIN, ledstate);
+		ledstate = !ledstate;
+		
+		INIT_DataLogger3(data);
+		SET_DataLogger3_Analog1(data, sensor_data[0]);
+		SET_DataLogger3_Analog2(data, sensor_data[1]);
+		SET_DataLogger3_Analog3(data, sensor_data[2]);
+		SET_DataLogger3_Analog4(data, sensor_data[3]);
+		SET_DataLogger3_Analog5(data, sensor_data[4]);
+		SET_DataLogger3_Analog6(data, sensor_data[5]);
+		can_send_standard_message(ID_DataLogger3, data, 8);
+		
+		
 	}
 
 }

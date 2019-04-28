@@ -25,4 +25,9 @@ void system_board_init(void)
 	 * for, e.g., the I/O pins. The initialization can rely on application-
 	 * specific board configuration, found in conf_board.h.
 	 */
+		struct port_config config_port_pin;
+		port_get_config_defaults(&config_port_pin);
+		config_port_pin.direction = PORT_PIN_DIR_OUTPUT;
+		port_pin_set_config(LED_0_PIN, &config_port_pin);
+
 }

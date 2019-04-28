@@ -1,7 +1,7 @@
 /**
  * \file
  *
- * \brief User board configuration template
+ * \brief ARM functions for busy-wait delay loops
  *
  * Copyright (c) 2014-2018 Microchip Technology Inc. and its subsidiaries.
  *
@@ -30,16 +30,57 @@
  * \asf_license_stop
  *
  */
+/*
+ * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
+ */
 
-#ifndef CONF_BOARD_H
-#define CONF_BOARD_H
-#define LED_0_PIN PIN_PA28
+#include "delay.h"
 
-#define CAN_TX_MUX_SETTING MUX_PA24G_CAN0_TX
-#define CAN_RX_MUX_SETTING MUX_PA25G_CAN0_RX
-#define CAN_TX_PIN PIN_PA24
-#define CAN_RX_PIN PIN_PA25
-#define CAN_MODULE CAN0
-#define CAN_TX_BUFFER_INDEX 0
+/**
+ * Value used to calculate ms delay. Default to be used with a 8MHz clock;
+ */
+static uint32_t cycles_per_ms = 8000000UL / 1000;
+static uint32_t cycles_per_us = 8000000UL / 1000000;
 
-#endif // CONF_BOARD_H
+/**
+ * \brief Initialize the delay driver.
+ *
+ * This must be called during start up to initialize the delay routine with
+ * the current used main clock. It must run any time the main CPU clock is changed.
+ */
+void delay_init(void)
+{
+	cycles_per_ms = system_gclk_gen_get_hz(0);
+	cycles_per_ms /= 1000;
+	cycles_per_us = cycles_per_ms / 1000;
+
+	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_ENABLE_Msk;
+}
+
+/**
+ * \brief Delay loop to delay at least n number of microseconds
+ *
+ * \param n  Number of microseconds to wait
+ */
+void delay_cycles_us(
+		uint32_t n)
+{
+	while (n--) {
+		/* Devide up to blocks of 10u */
+		delay_cycles(cycles_per_us);
+	}
+}
+
+/**
+ * \brief Delay loop to delay at least n number of milliseconds
+ *
+ * \param n  Number of milliseconds to wait
+ */
+void delay_cycles_ms(
+		uint32_t n)
+{
+	while (n--) {
+		/* Devide up to blocks of 1ms */
+		delay_cycles(cycles_per_ms);
+	}
+}

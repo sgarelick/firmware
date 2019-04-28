@@ -7,6 +7,8 @@ void SysTick_Handler(void)
 	g_ul_ms_ticks++;
 }
 
+bool ledstate;
+
 int main (void)
 {
 	system_init();
@@ -114,6 +116,9 @@ int main (void)
 					canline.data.arr[0], canline.data.arr[1], canline.data.arr[2], canline.data.arr[3],
 					canline.data.arr[4], canline.data.arr[5], canline.data.arr[6], canline.data.arr[7]);
 				printf(".", line);
+				port_pin_set_output_level(LED_0_PIN, ledstate);
+				ledstate = !ledstate;
+
 				// Write line
 				if (f_puts(line, &file_object) == -1) goto sd_cleanup;
 				// Flush
