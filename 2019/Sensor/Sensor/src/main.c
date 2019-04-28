@@ -28,6 +28,7 @@
  * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
  */
 #include <asf.h>
+#include "CANBus19.h"
 
 static struct can_module can_instance;
 struct adc_module adc_instance;
@@ -51,6 +52,7 @@ static void configure_can(void)
 	can_start(&can_instance);
 }
 
+int buffer;
 static void can_send_standard_message(uint32_t id_value, uint8_t *data, uint32_t data_length)
 {
 	uint32_t i;
@@ -62,23 +64,27 @@ static void can_send_standard_message(uint32_t id_value, uint8_t *data, uint32_t
 		tx_element.data[i] = *data;
 		data++;
 	}
-	can_set_tx_buffer_element(&can_instance, &tx_element, CAN_TX_BUFFER_INDEX);
-	can_tx_transfer_request(&can_instance, 1 << CAN_TX_BUFFER_INDEX);
+	if (++buffer >= CONF_CAN0_TX_BUFFER_NUM) buffer = 0;
+	can_set_tx_buffer_element(&can_instance, &tx_element, buffer);
+	can_tx_transfer_request(&can_instance, 1 << buffer);
 }
 
 volatile int sensor_id;
+volatile int sensor_ready;
 volatile uint16_t sensor_data[6];
 void adc_complete_callback(struct adc_module *const module)
 {
 	uint16_t result;
-	if (sensor_id >= 6) {
-		return;
-	}
 	int res = adc_read(adc_module, &result);
 	if (res == STATUS_OK) {
 		sensor_data[sensor_id] = result;
+	} else {
+		sensor_data[sensor_id] = 0;
 	}
-	++sensor_id;
+	if (++sensor_id >= 6) {
+		sensor_id = 0;
+		sensor_ready = 1;
+	}
 }
 
 void configure_adc(void)
@@ -88,7 +94,7 @@ void configure_adc(void)
 	config_adc.clock_prescaler = ADC_CLOCK_PRESCALER_DIV8;
 	config_adc.reference       = ADC_REFERENCE_INTVCC2;
 	config_adc.positive_input  = ADC_POSITIVE_INPUT_PIN0;
-	config_adc.resolution      = ADC_RESOLUTION_16BIT;
+	config_adc.resolution      = ADC_RESOLUTION_10BIT;
 	adc_init(&adc_instance, ADC0, &config_adc);
 	adc_enable(&adc_instance);
 }
@@ -102,6 +108,7 @@ void configure_adc_callbacks(void)
 
 int main (void)
 {
+	uint8_t data[8];
 	system_init();
 	
 	configure_can();
@@ -111,6 +118,21 @@ int main (void)
 	/* Insert application code here, after the board has been initialized. */
 	sensor_id = 0;
 	sensor_data[0] = sensor_data[1] = sensor_data[2] = sensor_data[3] =	sensor_data[4] = sensor_data[5] = 0;
+	sensor_ready = 0;
 	adc_enable_positive_input_sequence(adc_module, 0x000000FE); // enable sequence of pins 0,1,4,5,6,7
+	
+	while(1) {
+		while(sensor_ready) {
+			INIT_DataLogger3(data);
+			SET_DataLogger3_Analog1(data, sensor_data[0]);
+			SET_DataLogger3_Analog2(data, sensor_data[1]);
+			SET_DataLogger3_Analog3(data, sensor_data[2]);
+			SET_DataLogger3_Analog4(data, sensor_data[3]);
+			SET_DataLogger3_Analog5(data, sensor_data[4]);
+			SET_DataLogger3_Analog6(data, sensor_data[5]);
+			can_send_standard_message(ID_DataLogger3, data, 8);
+			sensor_ready = 0;
+		}
+	}
 
 }
