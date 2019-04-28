@@ -35,6 +35,7 @@ extern volatile can_message_t canline;
 extern volatile int canline_updated;
 
 extern struct rtc_module rtc_instance;
+extern struct can_module can_instance;
 
 
 #endif /* UTIL_H_ */

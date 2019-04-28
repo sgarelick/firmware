@@ -11,7 +11,7 @@
 volatile int canline_updated;
 volatile can_message_t canline;
 
-static struct can_module can_instance;
+struct can_module can_instance;
 
 void configure_can(void)
 {

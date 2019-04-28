@@ -192,7 +192,7 @@ static void parse_ds1307_data(uint8_t data[], struct rtc_calendar_time *ts)
 	if ((data[2] >> 6) & 1) { // 12-hour mode
 		ts->hour = ((data[2] >> 5) & 1) * 12 + ((data[2] >> 4) & 1) * 10 + ((data[2]) & 0xF);
 	} else {
-		ts->hour = ((data[2] >> 5) & 3) * 10 + ((data[2]) & 0xF);
+		ts->hour = ((data[2] >> 4) & 3) * 10 + ((data[2]) & 0xF);
 	}
 	ts->minute = ((data[1] >> 4) & 0xF) * 10 + (data[1] & 0xF);
 	ts->second = ((data[0] >> 4) & 0x7) * 10 + (data[0] & 0xF);
@@ -232,6 +232,7 @@ void initialize_rtc_calendar(void)
 
 	if (DS1307_UNCONFIGURED(packet)) {
 		// write time
+		printf("Initializing to %s %s\r\n", __DATE__, __TIME__);
 		packet.data_length = 8;
 		packet.data = txbuf;
 		txbuf[0] = 0;

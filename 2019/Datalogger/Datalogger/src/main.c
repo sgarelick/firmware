@@ -1,6 +1,12 @@
 #include <asf.h>
 #include "util.h"
 
+volatile uint32_t g_ul_ms_ticks = 0;
+void SysTick_Handler(void)
+{
+	g_ul_ms_ticks++;
+}
+
 int main (void)
 {
 	system_init();
@@ -22,6 +28,7 @@ int main (void)
 	
 	configure_i2c();
 	initialize_rtc_calendar();
+	SysTick_Config(48000000 / 1000);
 	
 	irq_initialize_vectors();
 	cpu_irq_enable();
@@ -84,12 +91,10 @@ int main (void)
 
 		printf("Starting data logging...\r\n");
 		res = f_puts("year,month,day,hour,min,sec,ms,time,id,data\n", &file_object);
-		if (res != FR_OK) goto sd_cleanup;
+		if (res == -1) goto sd_cleanup;
 		
 		// Main l00p
 		while (1) {
-			system_interrupt_enable_global();
-			read_time(&now);
 			if (rtc_calendar_is_periodic_interval(&rtc_instance, RTC_CALENDAR_PERIODIC_INTERVAL_0)) {
 				rtc_calendar_clear_periodic_interval(&rtc_instance, RTC_CALENDAR_PERIODIC_INTERVAL_0);
 				++onetwentyeighths;
@@ -97,21 +102,24 @@ int main (void)
 			if (rtc_calendar_is_periodic_interval(&rtc_instance, RTC_CALENDAR_PERIODIC_INTERVAL_7)) {
 				rtc_calendar_clear_periodic_interval(&rtc_instance, RTC_CALENDAR_PERIODIC_INTERVAL_7);
 				onetwentyeighths = 0;
+				g_ul_ms_ticks = 0;
+				read_time(&now);
 			}
 			while (canline_updated) {
 				// Critical section
-				system_interrupt_disable_global();
+				can_disable_interrupt(&can_instance, CAN_RX_FIFO_1_NEW_MESSAGE);
 				sprintf(line, "%d,%d,%d,%d,%d,%d,%d,%08lx,%02x%02x%02x%02x%02x%02x%02x%02x\n",
-					now.year, now.month, now.day, now.hour, now.minute, now.second, (int)(onetwentyeighths * 1000.f/128.f),
+					now.year, now.month, now.day, now.hour, now.minute, now.second, Min(g_ul_ms_ticks, 999),
 					canline.id,
 					canline.data.arr[0], canline.data.arr[1], canline.data.arr[2], canline.data.arr[3],
 					canline.data.arr[4], canline.data.arr[5], canline.data.arr[6], canline.data.arr[7]);
-				printf("%s", line);
+				printf(".", line);
 				// Write line
-				if (!f_puts(line, &file_object)) goto sd_cleanup;
+				if (f_puts(line, &file_object) == -1) goto sd_cleanup;
 				// Flush
 				f_sync(&file_object);
 				canline_updated = 0;
+				can_enable_interrupt(&can_instance, CAN_RX_FIFO_1_NEW_MESSAGE);
 			}
 		}
 		
