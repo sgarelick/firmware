@@ -240,8 +240,8 @@ void initialize_rtc_calendar(void)
 		txbuf[2] = ((__TIME__[3]-'0') << 4) | (__TIME__[4]-'0'); //minutes
 		txbuf[3] = (0 << 6) | ((__TIME__[0]-'0') << 4) | (__TIME__[1]-'0'); //hours(24-hr)
 		txbuf[4] = 6;
-		txbuf[5] = 0x27;
-		txbuf[6] = 0x04;
+		txbuf[5] = 0x04;
+		txbuf[6] = 0x05;
 		txbuf[7] = 0x19;
 		
 		write_packet_with_timeout_no_stop(&packet, I2C_TIMEOUT);

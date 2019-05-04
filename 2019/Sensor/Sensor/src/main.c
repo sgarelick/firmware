@@ -261,11 +261,23 @@ int main (void)
 		#ifdef WS_ENABLE
 		ticks_total_rev_ws1 = ticks_total_rev_ws2 = 0;
 		for (i = 0; i < WS_COUNTS; ++i) {
+			// wheel hasn't moved for 0.5 sec
+			if (g_ul_ms_ticks - last_ws1 > 50000)
+				ticks_rev_ws1[i] = 0;
+			if (g_ul_ms_ticks - last_ws2 > 50000)
+				ticks_rev_ws2[i] = 0;
+
 			ticks_total_rev_ws1 += ticks_rev_ws1[i];
 			ticks_total_rev_ws2 += ticks_rev_ws2[i];
 		}
-		rpm_ws1 = min(6000000UL / ticks_total_rev_ws1, 1023);
-		rpm_ws2 = min(6000000UL / ticks_total_rev_ws2, 1023);
+		if (ticks_total_rev_ws1 > 0)
+			rpm_ws1 = min(6000000UL / ticks_total_rev_ws1, 1023);
+		else
+			rpm_ws1 = 0;
+		if (ticks_total_rev_ws2 > 0)
+			rpm_ws2 = min(6000000UL / ticks_total_rev_ws2, 1023);
+		else
+			rpm_ws2 = 0;
 		#endif
 		
 		INIT_DataLogger3(data);
