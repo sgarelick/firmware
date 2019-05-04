@@ -1,9 +1,9 @@
 /**
  * \file
  *
- * \brief User board configuration template
+ * \brief SAM External Interrupt Driver Configuration Header
  *
- * Copyright (c) 2014-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2013-2018 Microchip Technology Inc. and its subsidiaries.
  *
  * \asf_license_start
  *
@@ -30,32 +30,26 @@
  * \asf_license_stop
  *
  */
+/*
+ * Support and FAQ: visit <a href="https://www.microchip.com/support/">Microchip Support</a>
+ */
+#ifndef CONF_EXTINT_H_INCLUDED
+#define CONF_EXTINT_H_INCLUDED
 
-#ifndef CONF_BOARD_H
-#define CONF_BOARD_H
-#define LED_0_PIN PIN_PA28
-
-#define CAN_TX_MUX_SETTING MUX_PA24G_CAN0_TX
-#define CAN_RX_MUX_SETTING MUX_PA25G_CAN0_RX
-#define CAN_TX_PIN PIN_PA24
-#define CAN_RX_PIN PIN_PA25
-#define CAN_MODULE CAN0
-#define CAN_TX_BUFFER_INDEX 0
-
-#define WS1_PIN PIN_PA10A_EIC_EXTINT10
-#define WS1_MUX MUX_PA10A_EIC_EXTINT10
-#define WS1_PINMUX PINMUX_PA10A_EIC_EXTINT10
-#define WS1_LINE 10
-
-#define WS2_PIN PIN_PA11A_EIC_EXTINT11
-#define WS2_MUX MUX_PA11A_EIC_EXTINT11
-#define WS2_PINMUX PINMUX_PA11A_EIC_EXTINT11
-#define WS2_LINE 11
-
-#define BOARD_2
-
-#ifdef BOARD_2
-#define WS_ENABLE
+/** 
+ * Define which clock type is used to clock EIC peripheral:
+ *     - EXTINT_CLK_GCLK
+ *     - EXTINT_CLK_ULP32K
+ *
+ * EXTINT_CLK_ULP32K is available for SAM L21/C21.
+ */
+#define EXTINT_CLOCK_SELECTION   EXTINT_CLK_GCLK
+ 
+/**
+ * Define which GCLK source is used when selecting EXTINT_CLK_GCLK type.
+ */
+#if (EXTINT_CLOCK_SELECTION == EXTINT_CLK_GCLK)
+#  define EXTINT_CLOCK_SOURCE      GCLK_GENERATOR_0
 #endif
 
-#endif // CONF_BOARD_H
+#endif
