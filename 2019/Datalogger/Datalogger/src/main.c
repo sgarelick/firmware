@@ -92,7 +92,7 @@ int main (void)
 		}
 
 		printf("Starting data logging...\r\n");
-		res = f_puts("year,month,day,hour,min,sec,ms,time,id,data\n", &file_object);
+		res = f_puts("year,month,day,hour,min,sec,ms,id,data\n", &file_object);
 		if (res == -1) goto sd_cleanup;
 		
 		// Main l00p
