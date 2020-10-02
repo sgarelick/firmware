@@ -1,106 +1,150 @@
 #include "drv_uart.h"
+#include "drv_serial.h"
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define RXBUFLEN 200
 volatile char rxbuf[RXBUFLEN] = {0};
 volatile int rxbufi = 0;
 
 #define BAUD 115200
-#define CLOCK 48000000
+
+struct drv_uart_channelData {
+	volatile char rxbuf[RXBUFLEN];
+	volatile int rxbufi;
+};
+
+static struct drv_uart_channelData channelData[DRV_UART_CHANNEL_COUNT];
+static enum drv_uart_channel sercomToChannelMap[6];
+
+static void rx_handler(int sercom, sercom_usart_int_registers_t * module);
 
 void drv_uart_init(void)
 {
-	// set up MCLK APB for SERCOM (synchronized peripheral clock)
-	MCLK_REGS->MCLK_APBCMASK |= MCLK_APBCMASK_SERCOM0(1);
+	for (enum drv_uart_channel channel = (enum drv_uart_channel)0U; channel < DRV_UART_CHANNEL_COUNT; ++channel)
+	{
+		const struct drv_uart_channelConfig * config = &drv_uart_config.channelConfig[channel];
 		
-	// set up peripheral clocks
-	GCLK_REGS->GCLK_PCHCTRL[19] = GCLK_PCHCTRL_CHEN(1) | GCLK_PCHCTRL_GEN_GCLK0;
-	
-	// set up pins
-	PORT_REGS->GROUP[0].PORT_PMUX[PIN_PA08] =
-			PORT_PMUX_PMUXE(MUX_PA08C_SERCOM0_PAD0) | PORT_PMUX_PMUXO(MUX_PA09C_SERCOM0_PAD1);
-	PORT_REGS->GROUP[0].PORT_PINCFG[PIN_PA08] = PORT_PINCFG_PMUXEN(1);
-	PORT_REGS->GROUP[0].PORT_PINCFG[PIN_PA09] = PORT_PINCFG_PMUXEN(1);
-	
-	// Enable interrupt
-	NVIC_EnableIRQ(SERCOM0_IRQn);
-	
-	SERCOM0_REGS->USART_INT.SERCOM_CTRLA = SERCOM_USART_INT_CTRLA_ENABLE(0);
-	while (SERCOM0_REGS->USART_INT.SERCOM_SYNCBUSY) {}
+		memset(&channelData[channel], 0, sizeof(struct drv_uart_channelData));
+		sercomToChannelMap[config->sercom_id] = channel;
+		
+		// Enable the bus clock, peripheral clock, and interrupts for the chosen SERCOM#
+		drv_serial_enable_sercom(config->sercom_id);
+		
+		// Register the interrupt handler, for interoperability with drv_spi and drv_i2c.
+		drv_serial_register_handler(config->sercom_id, rx_handler);
+		
+		// Set up TX and RX pins. Account for PORT register even/odd configuration.
+		PORT_REGS->GROUP[config->tx_pin/32].PORT_PMUX[(config->tx_pin%32)/2] |=
+				((config->tx_pin%2)==0) ? PORT_PMUX_PMUXE(config->tx_mux) : PORT_PMUX_PMUXO(config->tx_mux);
+		PORT_REGS->GROUP[config->rx_pin/32].PORT_PMUX[(config->rx_pin%32)/2] |=
+				((config->rx_pin%2)==0) ? PORT_PMUX_PMUXE(config->rx_mux) : PORT_PMUX_PMUXO(config->rx_mux);
+		PORT_REGS->GROUP[config->tx_pin/32].PORT_PINCFG[config->tx_pin%32] = PORT_PINCFG_PMUXEN(1);
+		PORT_REGS->GROUP[config->rx_pin/32].PORT_PINCFG[config->rx_pin%32] = PORT_PINCFG_PMUXEN(1);
+		
+		// Disable SERCOM
+		config->module->SERCOM_CTRLA = SERCOM_USART_INT_CTRLA_ENABLE(0);
+		// Wait for synchronization
+		while (config->module->SERCOM_SYNCBUSY) {}
 
-	SERCOM0_REGS->USART_INT.SERCOM_CTRLA =
-			SERCOM_USART_INT_CTRLA_DORD_LSB | SERCOM_USART_INT_CTRLA_CMODE_ASYNC |
-			SERCOM_USART_INT_CTRLA_FORM_USART_FRAME_NO_PARITY | SERCOM_USART_INT_CTRLA_RXPO_PAD1 |
-			SERCOM_USART_INT_CTRLA_TXPO_PAD0 | SERCOM_USART_INT_CTRLA_MODE_USART_INT_CLK;
-	
-	SERCOM0_REGS->USART_INT.SERCOM_CTRLB =
-			SERCOM_USART_INT_CTRLB_RXEN(1) | SERCOM_USART_INT_CTRLB_TXEN(1) |
-			SERCOM_USART_INT_CTRLB_ENC(0) | SERCOM_USART_INT_CTRLB_SFDE(0) |
-			SERCOM_USART_INT_CTRLB_SBMODE_1_BIT | SERCOM_USART_INT_CTRLB_CHSIZE_8_BIT;
-	
-	// Set baud rate
-	SERCOM0_REGS->USART_INT.SERCOM_BAUD = (int) 65535*(1-16*(((float)BAUD)/CLOCK)); // 115200, see datasheet page 489
-	
-	// Enable RX interrupt
-	SERCOM0_REGS->USART_INT.SERCOM_INTENSET = SERCOM_USART_INT_INTENSET_RXC(1);
-	
-	// Start!
-	SERCOM0_REGS->USART_INT.SERCOM_CTRLA |= SERCOM_USART_INT_CTRLA_ENABLE(1);
-	while (SERCOM0_REGS->USART_INT.SERCOM_SYNCBUSY) {}
+		// Default UART settings (async, no LIN, LSB first, no parity)
+		config->module->SERCOM_CTRLA =
+				SERCOM_USART_INT_CTRLA_DORD_LSB | SERCOM_USART_INT_CTRLA_CMODE_ASYNC |
+				SERCOM_USART_INT_CTRLA_FORM_USART_FRAME_NO_PARITY | SERCOM_USART_INT_CTRLA_MODE_USART_INT_CLK |
+				config->tx_pad | config->rx_pad;
+
+		// Default UART settings (enable sending/receiving, 1 stop bit, 8 data bits)
+		config->module->SERCOM_CTRLB =
+				SERCOM_USART_INT_CTRLB_RXEN(1) | SERCOM_USART_INT_CTRLB_TXEN(1) |
+				SERCOM_USART_INT_CTRLB_ENC(0) | SERCOM_USART_INT_CTRLB_SFDE(0) |
+				SERCOM_USART_INT_CTRLB_SBMODE_1_BIT | SERCOM_USART_INT_CTRLB_CHSIZE_8_BIT;
+
+		// Set baud rate
+		config->module->SERCOM_BAUD = config->baud;  
+
+		// Enable RX interrupt
+		config->module->SERCOM_INTENSET = SERCOM_USART_INT_INTENSET_RXC(1);
+
+		// Start!
+		config->module->SERCOM_CTRLA |= SERCOM_USART_INT_CTRLA_ENABLE(1);
+		while (config->module->SERCOM_SYNCBUSY) {}
+
+	}
 }
 
 void drv_uart_periodic(void)
 {
 }
 
-void drv_uart_send_message(const char * msg)
+void drv_uart_send_message(enum drv_uart_channel channel, const char * msg)
 {
-	// Clear existing errors
-	SERCOM0_REGS->USART_INT.SERCOM_INTFLAG = SERCOM_USART_INT_INTFLAG_ERROR(1);
-	while (*msg)
+	if (channel < DRV_UART_CHANNEL_COUNT)
 	{
-		// Wait til we good to write more
-		while (!(SERCOM0_REGS->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
-		SERCOM0_REGS->USART_INT.SERCOM_DATA = *(msg++);
-		// maybe wait until transmit complete
-		while (!(SERCOM0_REGS->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)) {};
-	}
-	// maybe check errors HAHA
-}
-
-void drv_uart_send_data(const uint8_t * msg, unsigned length)
-{
-	const uint8_t * target = msg + length;
-	while (msg < target)
-	{
-		// Wait til we good to write more
-		while (!(SERCOM0_REGS->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
-		SERCOM0_REGS->USART_INT.SERCOM_DATA = *(msg++);
-		// maybe wait until transmit complete
-		while (!(SERCOM0_REGS->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)) {};
+		sercom_usart_int_registers_t * module = drv_uart_config.channelConfig[channel].module;
+		// Clear existing errors
+		module->SERCOM_INTFLAG = SERCOM_USART_INT_INTFLAG_ERROR(1);
+		while (*msg)
+		{
+			// Wait til we good to write more
+			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
+			module->SERCOM_DATA = *(msg++);
+			// maybe wait until transmit complete
+			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)) {};
+		}
+		// check errors?
 	}
 }
 
-
-void drv_uart_clear_response(void)
+void drv_uart_send_data(enum drv_uart_channel channel, const uint8_t * msg, unsigned length)
 {
-	__disable_irq();
-	rxbufi = 0;
-	memset((char *)rxbuf, 0, RXBUFLEN);
-	__enable_irq();
+	if (channel < DRV_UART_CHANNEL_COUNT)
+	{
+		sercom_usart_int_registers_t * module = drv_uart_config.channelConfig[channel].module;
+		const uint8_t * target = msg + length;
+		while (msg < target)
+		{
+			// Wait til we good to write more
+			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
+			module->SERCOM_DATA = *(msg++);
+			// maybe wait until transmit complete
+			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)) {};
+		}
+	}
 }
 
-const char * drv_uart_get_response_buffer(void)
+
+void drv_uart_clear_response(enum drv_uart_channel channel)
 {
-	// locally, it's not volatile
-	return (const char *)rxbuf;
+	if (channel < DRV_UART_CHANNEL_COUNT)
+	{
+		__disable_irq();
+		channelData[channel].rxbufi = 0;
+		memset((char *)channelData[channel].rxbuf, 0, RXBUFLEN);
+		__enable_irq();
+	}
 }
 
-void SERCOM0_Handler(void)
+const char * drv_uart_get_response_buffer(enum drv_uart_channel channel)
 {
-	// New byte received
-	uint8_t data = SERCOM0_REGS->USART_INT.SERCOM_DATA;
-	if (rxbufi >= RXBUFLEN) return;
-	rxbuf[rxbufi++] = data;
+	if (channel < DRV_UART_CHANNEL_COUNT)
+	{
+		// locally, it's not volatile
+		return (const char *)channelData[channel].rxbuf;
+	}
+	else
+	{
+		return NULL;
+	}
 }
+
+static void rx_handler(int sercom, sercom_usart_int_registers_t * module)
+{
+	uint8_t incoming = module->SERCOM_DATA;
+	struct drv_uart_channelData * data = &channelData[sercomToChannelMap[sercom]];
+	if (data->rxbufi < RXBUFLEN)
+	{
+		data->rxbuf[data->rxbufi++] = incoming;
+	}
+}
+
