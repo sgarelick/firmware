@@ -12,6 +12,8 @@
         <itemPath>../Shared/Drivers/drv_uart.h</itemPath>
         <itemPath>Drivers/drv_uart_private.h</itemPath>
         <itemPath>../Shared/Drivers/drv_serial.h</itemPath>
+        <itemPath>../Shared/Drivers/drv_spi.h</itemPath>
+        <itemPath>Drivers/drv_spi_private.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f1" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOSConfig.h</itemPath>
@@ -37,6 +39,8 @@
         <itemPath>../Shared/Drivers/drv_uart.c</itemPath>
         <itemPath>Drivers/drv_uart_private.c</itemPath>
         <itemPath>../Shared/Drivers/drv_serial.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_spi.c</itemPath>
+        <itemPath>Drivers/drv_spi_private.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f1" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/main.c</itemPath>

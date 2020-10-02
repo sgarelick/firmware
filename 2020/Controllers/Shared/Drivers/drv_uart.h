@@ -1,5 +1,6 @@
 #pragma once
 #include "drv_uart_private.h"
+#include "drv_serial.h"
 #include "sam.h"
 
 void drv_uart_init(void);
@@ -11,14 +12,11 @@ const char * drv_uart_get_response_buffer(enum drv_uart_channel channel);
 void drv_uart_send_message(enum drv_uart_channel channel, const char * msg);
 void drv_uart_send_data(enum drv_uart_channel channel, const uint8_t * msg, unsigned length);
 
-#define CLOCK 48000000
-// see datasheet page 489
-#define UART_BAUD(x) (int) 65535*(1-16*(((float)x)/CLOCK))
 
 struct drv_uart_channelConfig {
 	int sercom_id;
 	sercom_usart_int_registers_t * module;
-	unsigned rx_pin, tx_pin, rx_port, tx_port, rx_mux, tx_mux, rx_pad, tx_pad;
+	unsigned rx_pinmux, tx_pinmux, rx_pad, tx_pad;
 	unsigned baud;
 };
 

@@ -9,25 +9,25 @@ void drv_serial_register_handler(int sercom, drv_serial_handler_t handler)
 
 void SERCOM0_Handler(void)
 {
-	handlers[0](0, &SERCOM0_REGS->USART_INT);
+	handlers[0](0, SERCOM0_REGS);
 }
 void SERCOM1_Handler(void)
 {
-	handlers[1](1, &SERCOM1_REGS->USART_INT);
+	handlers[1](1, SERCOM1_REGS);
 }
 void SERCOM2_Handler(void)
 {
-	handlers[2](2, &SERCOM2_REGS->USART_INT);
+	handlers[2](2, SERCOM2_REGS);
 }
 void SERCOM3_Handler(void)
 {
-	handlers[3](3, &SERCOM3_REGS->USART_INT);
+	handlers[3](3, SERCOM3_REGS);
 }
 void SERCOM4_Handler(void)
 {
-	handlers[4](4, &SERCOM5_REGS->USART_INT);
+	handlers[4](4, SERCOM5_REGS);
 }
 void SERCOM5_Handler(void)
 {
-	handlers[5](5, &SERCOM5_REGS->USART_INT);
+	handlers[5](5, SERCOM5_REGS);
 }

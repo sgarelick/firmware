@@ -18,7 +18,7 @@ struct drv_uart_channelData {
 static struct drv_uart_channelData channelData[DRV_UART_CHANNEL_COUNT];
 static enum drv_uart_channel sercomToChannelMap[6];
 
-static void rx_handler(int sercom, sercom_usart_int_registers_t * module);
+static void rx_handler(int sercom, sercom_registers_t * module);
 
 void drv_uart_init(void)
 {
@@ -35,13 +35,9 @@ void drv_uart_init(void)
 		// Register the interrupt handler, for interoperability with drv_spi and drv_i2c.
 		drv_serial_register_handler(config->sercom_id, rx_handler);
 		
-		// Set up TX and RX pins. Account for PORT register even/odd configuration.
-		PORT_REGS->GROUP[config->tx_pin/32].PORT_PMUX[(config->tx_pin%32)/2] |=
-				((config->tx_pin%2)==0) ? PORT_PMUX_PMUXE(config->tx_mux) : PORT_PMUX_PMUXO(config->tx_mux);
-		PORT_REGS->GROUP[config->rx_pin/32].PORT_PMUX[(config->rx_pin%32)/2] |=
-				((config->rx_pin%2)==0) ? PORT_PMUX_PMUXE(config->rx_mux) : PORT_PMUX_PMUXO(config->rx_mux);
-		PORT_REGS->GROUP[config->tx_pin/32].PORT_PINCFG[config->tx_pin%32] = PORT_PINCFG_PMUXEN(1);
-		PORT_REGS->GROUP[config->rx_pin/32].PORT_PINCFG[config->rx_pin%32] = PORT_PINCFG_PMUXEN(1);
+		// Set up TX and RX pins.
+		drv_serial_set_pinmux(config->tx_pinmux);
+		drv_serial_set_pinmux(config->rx_pinmux);
 		
 		// Disable SERCOM
 		config->module->SERCOM_CTRLA = SERCOM_USART_INT_CTRLA_ENABLE(0);
@@ -138,9 +134,9 @@ const char * drv_uart_get_response_buffer(enum drv_uart_channel channel)
 	}
 }
 
-static void rx_handler(int sercom, sercom_usart_int_registers_t * module)
+static void rx_handler(int sercom, sercom_registers_t * module)
 {
-	uint8_t incoming = module->SERCOM_DATA;
+	uint8_t incoming = module->USART_INT.SERCOM_DATA;
 	struct drv_uart_channelData * data = &channelData[sercomToChannelMap[sercom]];
 	if (data->rxbufi < RXBUFLEN)
 	{
