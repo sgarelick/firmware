@@ -9,7 +9,9 @@
 #define	DRV_SPI_PRIVATE_H
 
 enum drv_spi_channel {
+#if 0
 	DRV_SPI_CHANNEL_TEST,
+#endif
 	
 	DRV_SPI_CHANNEL_COUNT
 };

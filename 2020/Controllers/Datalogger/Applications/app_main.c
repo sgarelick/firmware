@@ -2,60 +2,70 @@
 #include "drv_uart.h"
 #include "drv_spi.h"
 #include "drv_i2c.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include <sam.h>
+#include <stdio.h>
 
 void app_init(void)
 {
-	
+	// enable pull-ups on disconnected pins
+	const uint8_t paUnused[] = {3, 4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 19, 28};
+	const uint8_t pbUnused[] = {0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 22, 23, 30, 31};
+	for (int i = 0; i < sizeof (paUnused) / sizeof (paUnused[0]); ++i)
+		PORT_REGS->GROUP[0].PORT_PINCFG[paUnused[i]] = PORT_PINCFG_PULLEN(1);
+	for (int i = 0; i < sizeof (pbUnused) / sizeof (pbUnused[0]); ++i)
+		PORT_REGS->GROUP[1].PORT_PINCFG[pbUnused[i]] = PORT_PINCFG_PULLEN(1);
 }
 
-static uint8_t last_result;
-static volatile uint8_t calenread[7];
+static uint8_t calenread[7];
 
 void app_periodic(void)
 {
-//	drv_uart_send_message(DRV_UART_CHANNEL_TEST, "weed\r\n");
-	last_result = drv_spi_transfer(DRV_SPI_CHANNEL_TEST, last_result);
-	
-	// start, write mode
-	SERCOM3_REGS->I2CM.SERCOM_ADDR = SERCOM_I2CM_ADDR_ADDR((0x68 << 1) | 0);
-	// wait
-	while (!(SERCOM3_REGS->I2CM.SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_MB_Msk)) {}
-	// can we talk?
-	if (SERCOM3_REGS->I2CM.SERCOM_STATUS & (SERCOM_I2CM_STATUS_ARBLOST_Msk | SERCOM_I2CM_STATUS_RXNACK_Msk))
+	if (xTaskGetTickCount() % 1000) return;
+
+	int r = drv_i2c_read_register(DRV_I2C_CHANNEL_RTC, 0x68, 0x00, calenread, 7);
+
+	if (r == 7)
 	{
-		SERCOM3_REGS->I2CM.SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
-		return;
-	}
-	// write
-	SERCOM3_REGS->I2CM.SERCOM_DATA = SERCOM_I2CM_DATA_DATA(0);
-	// wait
-	while (!(SERCOM3_REGS->I2CM.SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_MB_Msk)) {}
-	// can we talk?
-	if (SERCOM3_REGS->I2CM.SERCOM_STATUS & (SERCOM_I2CM_STATUS_ARBLOST_Msk | SERCOM_I2CM_STATUS_RXNACK_Msk))
-	{
-		SERCOM3_REGS->I2CM.SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
-		return;
-	}
-	// repeated start, read mode
-	SERCOM3_REGS->I2CM.SERCOM_ADDR = SERCOM_I2CM_ADDR_ADDR((0x68 << 1) | 1);
-	
-	for (int i = 0; i < 7; ++i)
-	{
-		//wait
-		while (!(SERCOM3_REGS->I2CM.SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_SB_Msk)) {}
-		//read
-		calenread[i] = SERCOM3_REGS->I2CM.SERCOM_DATA;
-		if (i < 6)
+		if (calenread[0] & 0x80)
 		{
-			// ask for more
-			SERCOM3_REGS->I2CM.SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(2);
+			printf("RTC is unconfigured, configuring...\r\n");
+			calenread[0] = (0 << 7) | ((__TIME__[6] - '0') << 4) | (__TIME__[7] - '0'); //seconds
+			calenread[1] = ((__TIME__[3] - '0') << 4) | (__TIME__[4] - '0'); //minutes
+			calenread[2] = (0 << 6) | ((__TIME__[0] - '0') << 4) | (__TIME__[1] - '0'); //hours(24-hr)
+			calenread[3] = 7;
+			calenread[4] = 0x04;
+			calenread[5] = 0x10;
+			calenread[6] = 0x20;
+			r = drv_i2c_write_register(DRV_I2C_CHANNEL_RTC, 0x68, 0x00, calenread, 7);
+			if (r == 7)
+				printf("Configuration success!\r\n");
+			else
+				printf("configuration fail...\r\n");
 		}
 		else
 		{
-			// no more
-			SERCOM3_REGS->I2CM.SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3) | SERCOM_I2CM_CTRLB_ACKACT(1);
+			printf("20%02x-%02x-%02x %02x:%02x:%02x\r\n", calenread[6], calenread[5], calenread[4], calenread[2], calenread[1], calenread[0]);
 		}
 	}
-	
-	last_result = drv_spi_transfer(DRV_SPI_CHANNEL_TEST, last_result);
+	else
+	{
+		printf("RTC READ ERROR\r\n");
+	}
+}
+
+int _write(int fd, const char *buf, size_t count)
+{
+	int written;
+	if (fd == 1)
+	{
+		drv_uart_send_data(DRV_UART_CHANNEL_DEBUG, (const uint8_t *) buf, count);
+		written = count;
+	}
+	else
+	{
+		written = 0;
+	}
+	return written;
 }

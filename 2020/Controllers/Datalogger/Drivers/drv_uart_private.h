@@ -9,8 +9,8 @@
 #define	DRV_UART_PRIVATE_H
 
 enum drv_uart_channel {
-#if 0
-	DRV_UART_CHANNEL_TEST,
+#if 1
+	DRV_UART_CHANNEL_DEBUG,
 #endif
 	
 	DRV_UART_CHANNEL_COUNT

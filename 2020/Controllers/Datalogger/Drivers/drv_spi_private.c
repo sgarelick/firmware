@@ -2,6 +2,7 @@
 
 static const struct drv_spi_channelConfig channels[DRV_SPI_CHANNEL_COUNT] =
 {
+#if 0
 	[DRV_SPI_CHANNEL_TEST] = {
 		.sercom_id = 0,
 		.module = &SERCOM0_REGS->SPIM,
@@ -14,6 +15,7 @@ static const struct drv_spi_channelConfig channels[DRV_SPI_CHANNEL_COUNT] =
 		.di_po = 1,
 		.baud = SERIAL_BAUD_SYNC(400000)
 	}
+#endif
 };
 
 const struct drv_spi_config drv_spi_config = {

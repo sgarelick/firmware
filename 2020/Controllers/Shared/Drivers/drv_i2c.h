@@ -35,6 +35,9 @@ extern const struct drv_i2c_config drv_i2c_config;
 void drv_i2c_init(void);
 uint8_t drv_i2c_transfer(enum drv_i2c_channel channel, uint8_t out);
 
+int drv_i2c_read_register(enum drv_i2c_channel channel, uint8_t address, uint8_t pointer, uint8_t results[], int length);
+int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_t pointer, const uint8_t command[], int length);
+
 
 #endif	/* DRV_I2C_H */
 
