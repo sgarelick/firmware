@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sam.h"
+#include "config.h"
 
 #define ENABLE_CAN0 0
 #define ENABLE_CAN1 1

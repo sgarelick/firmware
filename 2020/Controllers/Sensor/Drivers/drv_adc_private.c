@@ -8,6 +8,7 @@
 #include "sam.h"
 
 static const struct drv_adc_channelConfig channelConfig[DRV_ADC_CHANNEL_COUNT] = {
+#if GENERAL_PURPOSE
 	// Items on ADC0
 	[DRV_ADC_CHANNEL_VIOUT1] = {
 		.adc_id = 0,
@@ -66,6 +67,29 @@ static const struct drv_adc_channelConfig channelConfig[DRV_ADC_CHANNEL_COUNT] =
 		.adc_id = 1,
 		.mux = ADC_INPUTCTRL_MUXPOS_AIN7_Val,
 	},
+#elif UPRIGHT
+	// Items on ADC0
+	[DRV_ADC_CHANNEL_BRK_PWR_SENSE] = {
+		.adc_id = 0,
+		.mux = ADC_INPUTCTRL_MUXPOS_AIN0_Val,
+	},
+	[DRV_ADC_CHANNEL_BRK_TMP] = {
+		.adc_id = 0,
+		.mux = ADC_INPUTCTRL_MUXPOS_AIN1_Val,
+	},
+	[DRV_ADC_CHANNEL_WHL_PWR_SENSE] = {
+		.adc_id = 0,
+		.mux = ADC_INPUTCTRL_MUXPOS_AIN2_Val,
+	},
+	[DRV_ADC_CHANNEL_ACCEL_X] = {
+		.adc_id = 0,
+		.mux = ADC_INPUTCTRL_MUXPOS_AIN4_Val,
+	},
+	[DRV_ADC_CHANNEL_ACCEL_Y] = {
+		.adc_id = 0,
+		.mux = ADC_INPUTCTRL_MUXPOS_AIN5_Val,
+	},
+#endif
 };
 
 struct drv_adc_config drv_adc_config = {
