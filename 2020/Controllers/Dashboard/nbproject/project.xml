@@ -15,6 +15,7 @@
             <sourceRootList>
                 <sourceRootElem>../Shared/Device_Startup</sourceRootElem>
                 <sourceRootElem>../Shared/RTOS</sourceRootElem>
+                <sourceRootElem>../Shared/Drivers</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>

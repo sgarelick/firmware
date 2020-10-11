@@ -9,6 +9,8 @@
       </logicalFolder>
       <logicalFolder name="f2" displayName="Drivers" projectFiles="true">
         <itemPath>Drivers/drv_main.h</itemPath>
+        <itemPath>../Shared/Drivers/drv_i2c.h</itemPath>
+        <itemPath>Drivers/drv_i2c_private.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f3" displayName="RTOS" projectFiles="true">
       </logicalFolder>
@@ -30,6 +32,9 @@
       </logicalFolder>
       <logicalFolder name="f3" displayName="Drivers" projectFiles="true">
         <itemPath>Drivers/drv_main.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_i2c.c</itemPath>
+        <itemPath>Drivers/drv_i2c_private.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_serial.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f4" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOS/Source/croutine.c</itemPath>
@@ -53,6 +58,7 @@
   <sourceRootList>
     <Elem>../Shared/Device_Startup</Elem>
     <Elem>../Shared/RTOS</Elem>
+    <Elem>../Shared/Drivers</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
