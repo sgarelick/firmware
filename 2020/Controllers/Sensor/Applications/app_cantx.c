@@ -67,5 +67,9 @@ static void app_cantx_populate_message(TimerHandle_t xTimerHandle)
 #elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_RL_UPRIGHT)
 #elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_RR_UPRIGHT)
 #endif
+#if GENERAL_PURPOSE
 	drv_can_queue_tx_buffer(CAN1_REGS, (enum drv_can_tx_buffer_table)0U);
+#elif UPRIGHT
+	drv_can_queue_tx_buffer(CAN0_REGS, (enum drv_can_tx_buffer_table)0U);
+#endif
 }

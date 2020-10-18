@@ -17,18 +17,23 @@ static const struct drv_can_tx_buffer_config transmitConfig[DRV_CAN_TX_BUFFER_CO
 	#elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_CG)
 	DRV_CAN_TX_BUFFER(CAN1, CG_Sensor),
 	#elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_FL_UPRIGHT)
-	DRV_CAN_TX_BUFFER(CAN1, FL_Upright),
+	DRV_CAN_TX_BUFFER(CAN0, FL_Upright),
 	#elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_FR_UPRIGHT)
-	DRV_CAN_TX_BUFFER(CAN1, FR_Upright),
+	DRV_CAN_TX_BUFFER(CAN0, FR_Upright),
 	#elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_RL_UPRIGHT)
-	DRV_CAN_TX_BUFFER(CAN1, RL_Upright),
+	DRV_CAN_TX_BUFFER(CAN0, RL_Upright),
 	#elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_RR_UPRIGHT)
-	DRV_CAN_TX_BUFFER(CAN1, RR_Upright),
+	DRV_CAN_TX_BUFFER(CAN0, RR_Upright),
 	#endif
 };
 
 const struct drv_can_config drv_can_config = {
+#if UPRIGHT
+	.standard_filters_can0 = standardFilters,
+	.extended_filters_can0 = extendedFilters,
+#elif GENERAL_PURPOSE
 	.standard_filters_can1 = standardFilters,
 	.extended_filters_can1 = extendedFilters,
+#endif
 	.transmit_config = transmitConfig,
 };
