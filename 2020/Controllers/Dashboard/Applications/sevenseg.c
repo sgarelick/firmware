@@ -22,6 +22,14 @@ const uint8_t DisplayAddresses[5] = {
     0x27
 };
 
+void sevenseg_init(void) {
+    const uint8_t tx[] = {0x00, 0x00};
+    for(uint8_t address = 0x25; address < 0x28; address++) {
+        drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, address, 0x00, tx, 2);
+    }
+}
+
+
 void set_digit(uint8_t display_index, uint8_t digit) {
     if(digit > 9) {
         // Invalid digit
