@@ -30,8 +30,13 @@ void set_digit(uint8_t display_index, uint8_t digit) {
     
     uint8_t code = SevenSegmentDigits[digit];
     uint8_t address = DisplayAddresses[display_index];
-    const uint8_t tx[] = {code, 0};
-    drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, address, 0x12, tx, 2);
+    uint8_t tx = code;
+    
+    // even index digit displays are at 0x13
+    uint8_t byte_two = display_index % 2 == 0;    
+    uint8_t pointer = 0x12 + byte_two;
+    
+    drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, address, pointer, &tx, 1);
 }
 
 void set_rpm(uint16_t rpm) {
