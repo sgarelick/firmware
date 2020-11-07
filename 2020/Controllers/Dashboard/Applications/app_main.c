@@ -19,6 +19,7 @@ void app_periodic(void)
 	
     set_gear(GearPosition);
     set_rpm(EngineSpeed);
+    set_rgb_one_digit(6, RGB_MAGENTA);
     
 	if (++GearPosition > 4)
 		GearPosition = 0;
