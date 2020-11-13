@@ -32,6 +32,5 @@ void drv_init(void)
 
 void drv_periodic(void)
 {
-	drv_uart_periodic();
 	drv_lte_periodic();
 }

@@ -3,16 +3,22 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
+#define TXBUFLEN 100
 #define RXBUFLEN 200
-volatile char rxbuf[RXBUFLEN] = {0};
-volatile int rxbufi = 0;
-
+#define LINEBUFLEN 50
 #define BAUD 115200
 
 struct drv_uart_channelData {
 	volatile char rxbuf[RXBUFLEN];
 	volatile int rxbufi;
+	char linebuf[LINEBUFLEN];
+	char txbuf[TXBUFLEN];
+	volatile char *txbufstart;
+	char *txbufend;
+	volatile TaskHandle_t txnotifytask;
 };
 
 static struct drv_uart_channelData channelData[DRV_UART_CHANNEL_COUNT];
@@ -60,7 +66,7 @@ void drv_uart_init(void)
 		config->module->SERCOM_BAUD = config->baud;  
 
 		// Enable RX interrupt
-		config->module->SERCOM_INTENSET = SERCOM_USART_INT_INTENSET_RXC(1);
+		config->module->SERCOM_INTENSET = SERCOM_USART_INT_INTENSET_RXC(1) | SERCOM_USART_INT_INTENSET_TXC(1);
 
 		// Start!
 		config->module->SERCOM_CTRLA |= SERCOM_USART_INT_CTRLA_ENABLE(1);
@@ -69,44 +75,43 @@ void drv_uart_init(void)
 	}
 }
 
-void drv_uart_periodic(void)
+enum drv_uart_statusCode drv_uart_send_message(enum drv_uart_channel channel, const char * msg)
 {
+	return drv_uart_send_data(channel, (const uint8_t *)msg, strlen(msg));
 }
 
-void drv_uart_send_message(enum drv_uart_channel channel, const char * msg)
+enum drv_uart_statusCode drv_uart_send_data(enum drv_uart_channel channel, const uint8_t * msg, unsigned length)
 {
 	if (channel < DRV_UART_CHANNEL_COUNT)
 	{
+		struct drv_uart_channelData * data = &channelData[channel];
 		sercom_usart_int_registers_t * module = drv_uart_config.channelConfig[channel].module;
-		// Clear existing errors
-		module->SERCOM_INTFLAG = SERCOM_USART_INT_INTFLAG_ERROR(1);
-		while (*msg)
+
+		// Load data to be sent by interrupt routines
+		memcpy(data->txbuf, msg, length);
+		data->txbufstart = data->txbuf + 1;
+		data->txbufend = data->txbuf + length;
+		data->txnotifytask = xTaskGetCurrentTaskHandle();
+		
+		// Send the first byte to kick off the chain
+		module->SERCOM_INTFLAG = 0xF;
+		while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
+		module->SERCOM_DATA = *msg;
+		
+		// Wait for chain to finish
+		uint32_t retval = ulTaskNotifyTake(pdTRUE, 10);
+		if (retval == 1)
 		{
-			// Wait for data buffer to empty
-			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
-			module->SERCOM_DATA = *(msg++);
-			// Wait for transmit complete
-			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)) {};
+			return DRV_UART_SUCCESS;
 		}
-		// Error checking not included because I can't rationalize what errors we could possibly
-		// have (especially because we're not using CTS/DTS/etc)
+		else
+		{
+			return DRV_UART_TIMEOUT;
+		}
 	}
-}
-
-void drv_uart_send_data(enum drv_uart_channel channel, const uint8_t * msg, unsigned length)
-{
-	if (channel < DRV_UART_CHANNEL_COUNT)
+	else
 	{
-		sercom_usart_int_registers_t * module = drv_uart_config.channelConfig[channel].module;
-		const uint8_t * target = msg + length;
-		while (msg < target)
-		{
-			// Wait for data buffer to empty
-			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_DRE_Msk)) {};
-			module->SERCOM_DATA = *(msg++);
-			// Wait for transmit complete
-			while (!(module->SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)) {};
-		}
+		return DRV_UART_ERROR;
 	}
 }
 
@@ -135,13 +140,61 @@ const char * drv_uart_get_response_buffer(enum drv_uart_channel channel)
 	}
 }
 
+const char * drv_uart_read_line(enum drv_uart_channel channel, int timeout)
+{
+	if (channel < DRV_UART_CHANNEL_COUNT)
+	{
+		struct drv_uart_channelData * data = &channelData[channel];
+		const char * lend;
+		
+		while (!(lend = strstr((const char *)data->rxbuf, "\r")) && timeout > 0)
+		{
+			vTaskDelay(1);
+			timeout--;
+		}
+		
+		if (lend)
+		{
+			int length = lend - data->rxbuf;
+			if (length > LINEBUFLEN)
+				length = LINEBUFLEN;
+			strncpy(data->linebuf, (const char *)data->rxbuf, length);
+			return data->linebuf;
+		}
+	}
+	return NULL;
+}
+
 static void rx_handler(int sercom, sercom_registers_t * module)
 {
-	uint8_t incoming = module->USART_INT.SERCOM_DATA;
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	struct drv_uart_channelData * data = &channelData[sercomToChannelMap[sercom]];
-	if (data->rxbufi < RXBUFLEN)
+	
+	// Check for incoming data
+	if (module->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_RXC_Msk)
 	{
-		data->rxbuf[data->rxbufi++] = incoming;
+		uint8_t incoming = module->USART_INT.SERCOM_DATA;
+		if (data->rxbufi < RXBUFLEN)
+		{
+			data->rxbuf[data->rxbufi++] = incoming;
+		}
 	}
+	
+	// Check if we can send more data
+	if (module->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)
+	{
+		if (data->txbufstart < data->txbufend)
+		{
+			module->USART_INT.SERCOM_DATA = *(data->txbufstart++);
+		}
+		else if (data->txbufstart == data->txbufend)
+		{
+			module->USART_INT.SERCOM_INTFLAG = SERCOM_USART_INT_INTFLAG_TXC(1);
+			vTaskNotifyGiveFromISR(data->txnotifytask, &xHigherPriorityTaskWoken);
+			data->txnotifytask = NULL;
+		}
+	}
+	
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 

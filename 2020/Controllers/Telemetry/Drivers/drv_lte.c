@@ -152,48 +152,48 @@ static void drv_lte_state_entry()
 			
 		case DRV_LTE_CONFIGURE_CMDECHO:
 			timer = xTaskGetTickCount() + 100;
-			drv_uart_clear_response();
-			drv_uart_send_message("ATE0\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "ATE0\r");
 			break;
 			
 		case DRV_LTE_CONFIGURE_GNSS_ENABLE:
 			timer = xTaskGetTickCount() + 10000;
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+UGPS=1,0,3\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+UGPS=1,0,3\r");
 			break;
 			
 		case DRV_LTE_CONFIGURE_GNSS_NMEA:
 			timer = xTaskGetTickCount() + 10000;
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+UGRMC=1\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+UGRMC=1\r");
 			break;
 			
 		case DRV_LTE_READ_GNSS:
 			timer = xTaskGetTickCount() + 10000;
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+UGRMC?\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+UGRMC?\r");
 			break;
 		
 		case DRV_LTE_WAIT:
 			timer = xTaskGetTickCount() + 1000;
 			network_registered = false;
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+CREG?\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+CREG?\r");
 			break;
 		
 		case DRV_LTE_OPEN_SOCKET:
 			timer = xTaskGetTickCount() + 1000;
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+USOCR=17\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+USOCR=17\r");
 			break;
 		
 		case DRV_LTE_CLOSE_SOCKET:
 		{
 			timer = xTaskGetTickCount() + 120000;
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+USOCL=");
-			drv_uart_send_message(drv_lte_utoa(udp_socket_id));
-			drv_uart_send_message("\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+USOCL=");
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, drv_lte_utoa(udp_socket_id));
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "\r");
 			udp_socket_id = -1;
 			break;
 		}
@@ -202,24 +202,24 @@ static void drv_lte_state_entry()
 		{
 			timer = xTaskGetTickCount() + 10000;
 			xSemaphoreTake(transmission_semaphore, 9999);
-			drv_uart_clear_response();
-			drv_uart_send_message("AT+USOST=");
-			drv_uart_send_message(drv_lte_utoa(udp_socket_id));
-			drv_uart_send_message(",\"");
-			drv_uart_send_message(udp_message_destination);
-			drv_uart_send_message("\",");
-			drv_uart_send_message(drv_lte_utoa(udp_port));
-			drv_uart_send_message(",");
-			drv_uart_send_message(drv_lte_utoa(udp_message_length));
-			drv_uart_send_message("\r");
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "AT+USOST=");
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, drv_lte_utoa(udp_socket_id));
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, ",\"");
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, udp_message_destination);
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "\",");
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, drv_lte_utoa(udp_port));
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, ",");
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, drv_lte_utoa(udp_message_length));
+			drv_uart_send_message(DRV_UART_CHANNEL_LTE, "\r");
 			break;
 		}
 		
 		case DRV_LTE_TRANSMIT_UDP_DATA:
 		{
 			timer = xTaskGetTickCount() + 10000;
-			drv_uart_clear_response();
-			drv_uart_send_data(udp_message_data, udp_message_length);
+			drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
+			drv_uart_send_data(DRV_UART_CHANNEL_LTE, udp_message_data, udp_message_length);
 			break;
 		}
 			
@@ -233,10 +233,10 @@ static void drv_lte_state_action()
 	switch (current_state)
 	{
 		case DRV_LTE_WAIT:
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
-				drv_lte_parse_creg(drv_uart_get_response_buffer());
-				drv_uart_clear_response();
+				drv_lte_parse_creg(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE));
+				drv_uart_clear_response(DRV_UART_CHANNEL_LTE);
 				if (!network_registered)
 					globalError = 4;
 			}
@@ -266,7 +266,7 @@ static enum drv_lte_state drv_lte_state_transition()
 			break;
 			
 		case DRV_LTE_CONFIGURE_CMDECHO:
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
 				next_state = DRV_LTE_CONFIGURE_GNSS_ENABLE;
 				globalError = 0;
@@ -279,8 +279,8 @@ static enum drv_lte_state drv_lte_state_transition()
 			break;
 			
 		case DRV_LTE_CONFIGURE_GNSS_ENABLE:
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n")
-				|| strstr(drv_uart_get_response_buffer(), "GPS aiding mode already set\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n")
+				|| strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "GPS aiding mode already set\r\n"))
 			{
 				next_state = DRV_LTE_CONFIGURE_GNSS_NMEA;
 				globalError = 0;
@@ -293,12 +293,12 @@ static enum drv_lte_state drv_lte_state_transition()
 			break;
 		
 		case DRV_LTE_CONFIGURE_GNSS_NMEA:
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
 				next_state = DRV_LTE_READ_GNSS;
 				globalError = 0;
 			}
-			else if (strstr(drv_uart_get_response_buffer(), "ERROR"))
+			else if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "ERROR"))
 			{
 				next_state = DRV_LTE_WAIT;
 				globalError = 2;
@@ -311,19 +311,19 @@ static enum drv_lte_state drv_lte_state_transition()
 			break;
 		
 		case DRV_LTE_READ_GNSS:
-			if (strstr(drv_uart_get_response_buffer(), "Not available"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "Not available"))
 			{
 				next_state = DRV_LTE_WAIT;
 				globalError = 3;
 			}
-			else if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			else if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
 				next_state = DRV_LTE_WAIT;
 				globalError = 0;
 				
-				drv_lte_parse_nmea_rmc(drv_uart_get_response_buffer());
+				drv_lte_parse_nmea_rmc(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE));
 			}
-			else if (strstr(drv_uart_get_response_buffer(), "ERROR"))
+			else if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "ERROR"))
 			{
 				next_state = DRV_LTE_WAIT;
 				globalError = 2;
@@ -355,12 +355,12 @@ static enum drv_lte_state drv_lte_state_transition()
 			break;
 		
 		case DRV_LTE_OPEN_SOCKET:
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
 				next_state = DRV_LTE_WAIT;
 				globalError = 0;
 				
-				drv_lte_parse_usocr(drv_uart_get_response_buffer());
+				drv_lte_parse_usocr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE));
 			}
 			else if (xTaskGetTickCount() >= timer)
 			{
@@ -371,11 +371,11 @@ static enum drv_lte_state drv_lte_state_transition()
 		
 		case DRV_LTE_CLOSE_SOCKET:
 		{
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
 				next_state = DRV_LTE_WAIT;
 			}
-			else if (strstr(drv_uart_get_response_buffer(), "ERROR"))
+			else if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "ERROR"))
 			{
 				next_state = DRV_LTE_WAIT;
 			}
@@ -388,11 +388,11 @@ static enum drv_lte_state drv_lte_state_transition()
 		
 		case DRV_LTE_TRANSMIT_UDP_META:
 		{
-			if (strstr(drv_uart_get_response_buffer(), "@"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "@"))
 			{
 				next_state = DRV_LTE_TRANSMIT_UDP_DATA;
 			}
-			else if (strstr(drv_uart_get_response_buffer(), "ERROR") && strstr(drv_uart_get_response_buffer(), "\r\n\r\n"))
+			else if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "ERROR") && strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\n\r\n"))
 			{
 				xSemaphoreGive(transmission_semaphore);
 				next_state = DRV_LTE_WAIT;
@@ -408,16 +408,16 @@ static enum drv_lte_state drv_lte_state_transition()
 		
 		case DRV_LTE_TRANSMIT_UDP_DATA:
 		{
-			if (strstr(drv_uart_get_response_buffer(), "\r\nOK\r\n"))
+			if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "\r\nOK\r\n"))
 			{
 				next_state = DRV_LTE_WAIT;
 				globalError = 0;
 				xSemaphoreGive(transmission_semaphore);
 				message_to_send = false;
 				
-				drv_lte_parse_usost(drv_uart_get_response_buffer());
+				drv_lte_parse_usost(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE));
 			}
-			else if (strstr(drv_uart_get_response_buffer(), "ERROR"))
+			else if (strstr(drv_uart_get_response_buffer(DRV_UART_CHANNEL_LTE), "ERROR"))
 			{
 				next_state = DRV_LTE_CLOSE_SOCKET;
 				globalError = 2;
