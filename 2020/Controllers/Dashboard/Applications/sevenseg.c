@@ -36,7 +36,7 @@ void set_digit(uint8_t display_index, uint8_t digit) {
         return; 
     }
     
-    uint8_t code = SevenSegmentDigits[digit];
+    uint8_t code = ~SevenSegmentDigits[digit];
     uint8_t address = DisplayAddresses[display_index];
     uint8_t tx = code;
     
