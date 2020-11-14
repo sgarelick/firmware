@@ -1,6 +1,10 @@
 #include "drv_eic.h"
 #include "sam.h"
 
+int clicks_per_second;
+int total_clicks;
+int seconds_passed;
+if 
 void drv_eic_init(void) {
     //Sets configuration to disable eic
     EIC_REGS->EIC_CTRLA = EIC_CTRLA_ENABLE(0);
@@ -31,5 +35,15 @@ void drv_eic_init(void) {
 }
 
 void EIC_Handler() {
+    int currentTime = xTaskGetTickCount();
+    
+    seconds_passed = currentTime % 1000;
+    
+    total_clicks++;
+    
+    if (seconds_passed >= 1) { 
+        clicks_per_second = total_clicks/seconds_passed; 
+    }
+    
     EIC_REGS->EIC_INTFLAG = 0xFFFFFFFF;
 }

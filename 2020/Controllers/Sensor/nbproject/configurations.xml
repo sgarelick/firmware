@@ -20,6 +20,7 @@
         <itemPath>Drivers/drv_can_private.h</itemPath>
         <itemPath>Drivers/drv_gpio_private.h</itemPath>
         <itemPath>Drivers/drv_main.h</itemPath>
+        <itemPath>../Shared/Drivers/drv_eic.h</itemPath>
       </logicalFolder>
       <logicalFolder name="RTOS" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOS/Source/include/atomic.h</itemPath>
@@ -79,6 +80,7 @@
         <itemPath>Drivers/drv_can_private.c</itemPath>
         <itemPath>Drivers/drv_gpio_private.c</itemPath>
         <itemPath>Drivers/drv_main.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_eic.c</itemPath>
       </logicalFolder>
       <logicalFolder name="RTOS" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOS/Source/croutine.c</itemPath>
