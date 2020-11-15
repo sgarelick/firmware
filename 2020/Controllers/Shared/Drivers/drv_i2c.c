@@ -24,19 +24,16 @@ void drv_i2c_init(void)
 		// Disable SERCOM
 		config->module->SERCOM_CTRLA = SERCOM_I2CM_CTRLA_ENABLE(0);
 		// Wait for synchronization
-		while (config->module->SERCOM_SYNCBUSY)
-		{
-		}
-
+		while (config->module->SERCOM_SYNCBUSY) {}
+		
 		config->module->SERCOM_CTRLA =
 				SERCOM_I2CM_CTRLA_MODE_I2C_MASTER | SERCOM_I2CM_CTRLA_INACTOUT_55US;
+		while (config->module->SERCOM_SYNCBUSY) {}
 
 		config->module->SERCOM_BAUD = config->baud;
 
 		config->module->SERCOM_CTRLA |= SERCOM_I2CM_CTRLA_ENABLE(1);
-		while (config->module->SERCOM_SYNCBUSY)
-		{
-		}
+		while (config->module->SERCOM_SYNCBUSY) {}
 	}
 }
 
@@ -110,9 +107,15 @@ int drv_i2c_read_register(enum drv_i2c_channel channel, uint8_t address, uint8_t
 int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_t pointer, const uint8_t command[], int length)
 {
 	sercom_i2cm_registers_t * module = drv_i2c_config.channelConfig[channel].module;
+
+/*	
+	for (int i = 0; i < 200; ++i)
+		asm volatile("nop\r\n");
+ */
 	
 	// start, write mode
 	module->SERCOM_ADDR = SERCOM_I2CM_ADDR_ADDR((address << 1) | 0);
+	while (module->SERCOM_SYNCBUSY) {}
 	// wait
 	while (!(module->SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_MB_Msk))
 	{
@@ -121,11 +124,13 @@ int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_
 	if (module->SERCOM_INTFLAG & (SERCOM_I2CM_INTFLAG_ERROR(1)))
 	{
 		module->SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
+		while (module->SERCOM_SYNCBUSY) {}
 		module->SERCOM_INTFLAG = 0xFF;
 		return 0;
 	}
 	// write
 	module->SERCOM_DATA = SERCOM_I2CM_DATA_DATA(pointer);
+	while (module->SERCOM_SYNCBUSY) {}
 
 	for (int i = 0; i < length; ++i)
 	{
@@ -137,11 +142,13 @@ int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_
 		if (module->SERCOM_INTFLAG & (SERCOM_I2CM_INTFLAG_ERROR(1)))
 		{
 			module->SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
+			while (module->SERCOM_SYNCBUSY) {}
 			module->SERCOM_INTFLAG = 0xFF;
 			return i;
 		}
 		//write
 		module->SERCOM_DATA = SERCOM_I2CM_DATA_DATA(command[i]);
+		while (module->SERCOM_SYNCBUSY) {}
 	}
 
 	//wait
@@ -149,6 +156,7 @@ int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_
 	{
 	}
 	module->SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
+	while (module->SERCOM_SYNCBUSY) {}
 	module->SERCOM_INTFLAG = 0xFF;
 	return length;
 }

@@ -18,7 +18,7 @@ enum rgb_color {
     RGB_WHITE = RGB_RED | RGB_GREEN | RGB_BLUE
 };
 
-void sevenseg_init(void);
+int sevenseg_init(void);
 void set_digit(uint8_t display_index, uint8_t digit);
 void set_rpm(uint16_t rpm);
 void set_gear(uint8_t gear);

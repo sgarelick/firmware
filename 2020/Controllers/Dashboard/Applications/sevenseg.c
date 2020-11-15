@@ -22,11 +22,28 @@ const uint8_t DisplayAddresses[5] = {
     0x27
 };
 
-void sevenseg_init(void) {
-    const uint8_t tx[] = {0x00, 0x00};
+#define TRIES 100
+static int init_mcp23017(uint8_t address)
+{
+	const uint8_t tx[] = {0x00, 0x00};
+	int length = 0;
+	int remaining = TRIES;
+	while ((length = drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, address, 0x00, tx, 2)) < 2
+			&& remaining > 0)
+	{
+		--remaining;
+	}
+	return length;
+}
+
+int sevenseg_init(void) {
+	int failures = 0;
     for(uint8_t address = 0x20; address < 0x28; address++) {
-        drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, address, 0x00, tx, 2);
+        int length = init_mcp23017(address);
+		if (length != 2)
+			++failures;
     }
+	return failures;
 }
 
 
@@ -66,10 +83,10 @@ void set_gear(uint8_t gear) {
 }
 
 void set_rgb_one(uint8_t r, uint8_t g, uint8_t b) {
-    uint8_t rg_data[] = {(r << 1) | (g & 1), (g << 2) | (b & 3)};
+    uint8_t rg_data[] = {~(r | (g << 7)), ~((g >> 1) | (b << 6))};
     drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, 0x20, 0x12, rg_data, 2);
     
-    uint8_t b_data[] = {b << 3};
+    uint8_t b_data[] = {~((b >> 2) | (0xF << 5))};
     drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, 0x21, 0x12, b_data, 1);
 }
 

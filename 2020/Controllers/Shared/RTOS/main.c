@@ -38,7 +38,9 @@ int main(void)
 // TODO: different priorities
 	xTaskCreate(DriverTask, "DRV", configMINIMAL_STACK_SIZE + 1000, NULL, 1, &DriverTaskID);
 	xTaskCreate(ApplicationTask, "APP", configMINIMAL_STACK_SIZE + 1000, NULL, 2, &ApplicationTaskID);
-	
+		drv_init();
+	app_init();
+
 	vTaskStartScheduler();
 	while(1);
 }
@@ -49,7 +51,6 @@ void DriverTask(void *pvParameters)
 
 	xLastWakeTime = xTaskGetTickCount();
 	
-	drv_init();
 	
 	while (1)
 	{
@@ -68,7 +69,6 @@ void ApplicationTask(void *pvParameters)
 
 	xLastWakeTime = xTaskGetTickCount();
 	
-	app_init();
 	
 	while (1)
 	{

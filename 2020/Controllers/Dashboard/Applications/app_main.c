@@ -5,10 +5,11 @@
 #include "task.h"
 
 volatile int GearPosition, EngineSpeed;
+volatile int failures;
 
 void app_init(void)
 {
-	sevenseg_init();
+	failures = sevenseg_init();
 	
 	GearPosition = 0;
 	EngineSpeed = 1000;
@@ -19,9 +20,9 @@ void app_periodic(void)
 	//const uint8_t tx[] = {0x00, 0x66};
 	//drv_i2c_write_register(DRV_I2C_CHANNEL_EXPANDERS, 0x25, 0x12, tx, 2);
 	
-    set_gear(GearPosition);
-    set_rpm(EngineSpeed);
-    set_rgb_one_digit(6, RGB_MAGENTA);
+    set_gear(failures);
+    //set_rpm(EngineSpeed);
+   set_rgb_one_digit(GearPosition, RGB_MAGENTA);
     
 	unsigned time = xTaskGetTickCount();
 	if (time % 1000 == 0)
@@ -32,7 +33,7 @@ void app_periodic(void)
 		EngineSpeed = 0;
 	}
 	
-    set_gear(GearPosition);
+//    set_gear(GearPosition);
     //set_rpm(EngineSpeed);
     
 }
