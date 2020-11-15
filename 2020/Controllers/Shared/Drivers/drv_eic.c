@@ -33,20 +33,21 @@ void drv_eic_init(void) {
     //Configure the PORT for EIC and Turn On
     PORT_REGS->GROUP[1].PORT_PMUX[9/2] |= PORT_PMUX_PMUXO(MUX_PB09A_EIC_EXTINT9);
     PORT_REGS->GROUP[1].PORT_PINCFG[9] |= PORT_PINCFG_PMUXEN(1);
+	
+	last_time = 0;
+	clicks_per_second = 0;
 }
 
 void EIC_Handler() {
     int currentTime = xTaskGetTickCount();
-    
-    currentTime %= 1000;
-    currentTime -= seconds_passed
-    seconds_passed = currentTime
-    
+	
+	if (currentTime - last_time > 1000)
+	{
+		clicks_per_second = total_clicks;
+		total_clicks = 0;
+		last_time = currentTime;
+	}
     total_clicks++;
-    
-    if (seconds_passed >= 1) { 
-        clicks_per_second = total_clicks/seconds_passed;
-    }
-    
+	
     EIC_REGS->EIC_INTFLAG = 0xFFFFFFFF;
 }
