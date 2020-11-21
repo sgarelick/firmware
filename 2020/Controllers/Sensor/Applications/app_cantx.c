@@ -17,6 +17,7 @@
 #define ulong uint32_t
 #include "2020.1.0.h"
 #include "config.h"
+#include "drv_eic.h"
 
 static void app_cantx_populate_message(TimerHandle_t);
 
@@ -62,7 +63,7 @@ static void app_cantx_populate_message(TimerHandle_t xTimerHandle)
 	SET_FL_Upright_Accel_X_FL(buffer->DB,		sensorResults.results[DRV_ADC_CHANNEL_ACCEL_X]);
 	SET_FL_Upright_Accel_Y_FL(buffer->DB,		sensorResults.results[DRV_ADC_CHANNEL_ACCEL_Y]);
 	SET_FL_Upright_Brake_Temp_FL(buffer->DB,	sensorResults.results[DRV_ADC_CHANNEL_BRK_TMP]);
-	SET_FL_Upright_Wheel_Speed_FL(buffer->DB,	0 /* TODO FIX */);
+	SET_FL_Upright_Wheel_Speed_FL(buffer->DB,	clicks_per_second);
 #elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_FR_UPRIGHT)
 #elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_RL_UPRIGHT)
 #elif (PCBA_ID == PCBA_ID_SENSOR_BOARD_RR_UPRIGHT)
