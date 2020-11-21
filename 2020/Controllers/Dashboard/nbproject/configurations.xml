@@ -12,6 +12,8 @@
         <itemPath>Drivers/drv_main.h</itemPath>
         <itemPath>../Shared/Drivers/drv_i2c.h</itemPath>
         <itemPath>Drivers/drv_i2c_private.h</itemPath>
+        <itemPath>../Shared/Drivers/drv_can.h</itemPath>
+        <itemPath>Drivers/drv_can_private.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f3" displayName="RTOS" projectFiles="true">
       </logicalFolder>
@@ -37,6 +39,8 @@
         <itemPath>../Shared/Drivers/drv_i2c.c</itemPath>
         <itemPath>Drivers/drv_i2c_private.c</itemPath>
         <itemPath>../Shared/Drivers/drv_serial.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_can.c</itemPath>
+        <itemPath>Drivers/drv_can_private.c</itemPath>
       </logicalFolder>
       <logicalFolder name="f4" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOS/Source/croutine.c</itemPath>
@@ -74,7 +78,7 @@
         <platformTool>AtmelIceTool</platformTool>
         <languageToolchain>ARM</languageToolchain>
         <languageToolchainVersion>9.3.1</languageToolchainVersion>
-        <platform>3</platform>
+        <platform>4</platform>
       </toolsSet>
       <packs>
         <pack name="CMSIS" vendor="ARM" version="5.4.0"/>

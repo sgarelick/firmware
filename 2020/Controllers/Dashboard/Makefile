@@ -54,7 +54,7 @@ RANLIB=ranlib
 build: .build-post
 
 .build-pre:
-# Add your pre 'build' code here...
+	cd ../Shared/DBC/ && $(MAKE) dbc/2020.1.0.h
 
 .build-post: .build-impl
 # Add your post 'build' code here...
