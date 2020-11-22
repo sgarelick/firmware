@@ -10,6 +10,10 @@
 #include "drv_can.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#define ubyte uint8_t
+#define uword uint16_t
+#define ulong uint32_t
+#include "2020.1.0.h"
 
 struct transmit_message 
 {
@@ -45,6 +49,26 @@ int app_telemetry_sent_messages(void)
 	return totalSentMessages;
 }
 
+static inline unsigned htonl(unsigned input)
+{
+	return ((input & 0xFF) << 24) | ((input & 0xFF00) << 8) | ((input & 0xFF0000) >> 8) | ((input & 0xFF000000) >> 24);
+}
+
+static inline void build_msg(struct transmit_message * tx_buf, int id, int ts, const uint8_t *data)
+{
+	tx_buf->id = htonl(id);
+	tx_buf->ts = htonl(ts);
+	tx_buf->checksum = 0;
+	for (int j = 0; j < 8; ++j)
+	{
+		tx_buf->data[j] = data[j];
+		tx_buf->checksum ^= data[j];
+	}
+	tx_buf->word[0] = 'W';
+	tx_buf->word[1] = 'U';
+	tx_buf->word[2] = '\n';
+}
+
 static void app_telemetry_read_and_queue_messages(void)
 {
 	struct transmit_message * tx_buf = (struct transmit_message *) drv_lte_get_transmission_queue();
@@ -57,29 +81,35 @@ static void app_telemetry_read_and_queue_messages(void)
 			if (drv_can_check_rx_buffer(CAN0_REGS, (int) i))
 			{
 				struct drv_can_rx_buffer_element * can_buf = drv_can_get_rx_buffer((int) i);
+				int id;
 				if (can_buf->RXBE_0.bit.XTD)
 				{
-					tx_buf->id = can_buf->RXBE_0.bit.ID;
+					id = can_buf->RXBE_0.bit.ID;
 				}
 				else
 				{
-					tx_buf->id = can_buf->RXBE_0.bit.ID >> 18;
+					id = can_buf->RXBE_0.bit.ID >> 18;
 				}
-				tx_buf->ts = can_buf->RXBE_1.bit.RXTS;
-				tx_buf->checksum = 0;
-				for (int j = 0; j < 8; ++j)
-				{
-					tx_buf->data[j] = can_buf->DB[j];
-					tx_buf->checksum ^= can_buf->DB[j];
-				}
-				tx_buf->word[0] = 'W';
-				tx_buf->word[1] = 'U';
-				tx_buf->word[2] = '\n';
+				build_msg(tx_buf, id, can_buf->RXBE_1.bit.RXTS, (const uint8_t *)can_buf->DB);
 				drv_can_clear_rx_buffer(CAN0_REGS, (int) i);
 				length++;
 				tx_buf++;
 				totalSentMessages++;
 			}
+		}
+		if (drv_lte_get_last_time() != NULL)
+		{
+			build_msg(tx_buf, ID_GPS_time, 0, (const uint8_t *)drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_CAN0_GPS_time)->DB);
+			length++;
+			tx_buf++;
+			totalSentMessages++;
+		}
+		if (drv_lte_get_last_location() != NULL)
+		{
+			build_msg(tx_buf, ID_GPS_POS, 0, (const uint8_t *)drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_CAN0_GPS_POS)->DB);
+			length++;
+			tx_buf++;
+			totalSentMessages++;
 		}
 		if (length > 0)
 		{

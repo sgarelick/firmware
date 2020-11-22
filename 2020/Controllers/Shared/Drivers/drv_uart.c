@@ -8,16 +8,17 @@
 
 #define TXBUFLEN 100
 #define RXBUFLEN 200
-#define LINEBUFLEN 50
+#define LINEBUFLEN 100
 #define BAUD 115200
+
+#define TX_DELAY (1 + 1000 / (BAUD / 10 / TXBUFLEN))
 
 struct drv_uart_channelData {
 	volatile char rxbuf[RXBUFLEN];
-	volatile int rxbufi;
+	volatile int rxbufwp, rxbufrp;
 	char linebuf[LINEBUFLEN];
-	char txbuf[TXBUFLEN];
-	volatile char *txbufstart;
-	char *txbufend;
+	volatile char txbuf[TXBUFLEN];
+	volatile int txbufsp, txbufep;
 	volatile TaskHandle_t txnotifytask;
 };
 
@@ -88,9 +89,9 @@ enum drv_uart_statusCode drv_uart_send_data(enum drv_uart_channel channel, const
 		sercom_usart_int_registers_t * module = drv_uart_config.channelConfig[channel].module;
 
 		// Load data to be sent by interrupt routines
-		memcpy(data->txbuf, msg, length);
-		data->txbufstart = data->txbuf + 1;
-		data->txbufend = data->txbuf + length;
+		memcpy((uint8_t *)data->txbuf, msg, length);
+		data->txbufsp = 1;
+		data->txbufep = length;
 		data->txnotifytask = xTaskGetCurrentTaskHandle();
 		
 		// Send the first byte to kick off the chain
@@ -99,7 +100,7 @@ enum drv_uart_statusCode drv_uart_send_data(enum drv_uart_channel channel, const
 		module->SERCOM_DATA = *msg;
 		
 		// Wait for chain to finish
-		uint32_t retval = ulTaskNotifyTake(pdTRUE, 10);
+		uint32_t retval = ulTaskNotifyTake(pdTRUE, TX_DELAY);
 		if (retval == 1)
 		{
 			return DRV_UART_SUCCESS;
@@ -120,10 +121,9 @@ void drv_uart_clear_response(enum drv_uart_channel channel)
 {
 	if (channel < DRV_UART_CHANNEL_COUNT)
 	{
-		__disable_irq();
-		channelData[channel].rxbufi = 0;
-		memset((char *)channelData[channel].rxbuf, 0, RXBUFLEN);
-		__enable_irq();
+		struct drv_uart_channelData * data = &channelData[channel];
+		
+		data->rxbufrp = data->rxbufwp;
 	}
 }
 
@@ -140,27 +140,92 @@ const char * drv_uart_get_response_buffer(enum drv_uart_channel channel)
 	}
 }
 
-const char * drv_uart_read_line(enum drv_uart_channel channel, int timeout)
+// Return number of bytes read
+int drv_uart_read(enum drv_uart_channel channel, char * buf, int nbyte)
 {
 	if (channel < DRV_UART_CHANNEL_COUNT)
 	{
 		struct drv_uart_channelData * data = &channelData[channel];
-		const char * lend;
 		
-		while (!(lend = strstr((const char *)data->rxbuf, "\r")) && timeout > 0)
+		// Read up to nbyte from FIFO structure into buf
+		int bufi = 0;
+		while ((data->rxbufrp != data->rxbufwp) && (bufi < nbyte - 1))
 		{
-			vTaskDelay(1);
-			timeout--;
+			buf[bufi++] = data->rxbuf[data->rxbufrp++];
+			if (data->rxbufrp >= RXBUFLEN)
+			{
+				data->rxbufrp = 0;
+			}
 		}
+		buf[bufi] = '\0'; // null-terminate
+		return bufi;
+	}
+	return -1;
+}
+
+static inline int drv_uart_getch(enum drv_uart_channel channel, char * ch)
+{
+	if (channel < DRV_UART_CHANNEL_COUNT)
+	{
+		struct drv_uart_channelData * data = &channelData[channel];
 		
-		if (lend)
+		// See if a character is available
+		int rp = data->rxbufrp;
+		if (rp != data->rxbufwp)
 		{
-			int length = lend - data->rxbuf;
-			if (length > LINEBUFLEN)
-				length = LINEBUFLEN;
-			strncpy(data->linebuf, (const char *)data->rxbuf, length);
-			return data->linebuf;
+			*ch = data->rxbuf[rp++];
+			if (rp >= RXBUFLEN)
+			{
+				rp = 0;
+			}
+			data->rxbufrp = rp;
+			return 1;
 		}
+		return 0;
+	}
+	return -1;
+}
+
+
+const char * drv_uart_read_line(enum drv_uart_channel channel, int timeout, const char * termination)
+{
+	if (channel < DRV_UART_CHANNEL_COUNT)
+	{
+		struct drv_uart_channelData * data = &channelData[channel];
+		
+		int li = 0;
+		int ret;
+		const int tlen = strlen(termination);
+		do {
+			// Read one character into the line buffer at available position
+			ret = drv_uart_getch(channel, data->linebuf + li);
+			if (ret == 1)
+			{
+				// Successful read
+				li += 1;
+				if (li >= LINEBUFLEN)
+				{
+					return NULL;
+				}
+				// Null-terminate and check last tlen characters
+				data->linebuf[li] = '\0';
+				if (strncmp(data->linebuf + li - tlen, termination, tlen) == 0)
+				{
+					return data->linebuf;
+				}
+			}
+			else if (ret == 0)
+			{
+				// No data to read, so wait a tick
+				vTaskDelay(1);
+				timeout--;
+			}
+			else
+			{
+				// Should not happen
+				return NULL;
+			}
+		} while (timeout > 0);
 	}
 	return NULL;
 }
@@ -174,20 +239,26 @@ static void rx_handler(int sercom, sercom_registers_t * module)
 	if (module->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_RXC_Msk)
 	{
 		uint8_t incoming = module->USART_INT.SERCOM_DATA;
-		if (data->rxbufi < RXBUFLEN)
+		// TODO: gracefully handle overflow conditions
+		int wp = data->rxbufwp;
+		data->rxbuf[wp++] = incoming;
+		if (wp >= RXBUFLEN)
 		{
-			data->rxbuf[data->rxbufi++] = incoming;
+			wp = 0;
 		}
+		data->rxbufwp = wp;
 	}
 	
 	// Check if we can send more data
 	if (module->USART_INT.SERCOM_INTFLAG & SERCOM_USART_INT_INTFLAG_TXC_Msk)
 	{
-		if (data->txbufstart < data->txbufend)
+		int sp = data->txbufsp; int ep = data->txbufep;
+		if (sp < ep)
 		{
-			module->USART_INT.SERCOM_DATA = *(data->txbufstart++);
+			module->USART_INT.SERCOM_DATA = data->txbuf[sp];
+			data->txbufsp = sp + 1;
 		}
-		else if (data->txbufstart == data->txbufend)
+		else if (sp == ep)
 		{
 			module->USART_INT.SERCOM_INTFLAG = SERCOM_USART_INT_INTFLAG_TXC(1);
 			vTaskNotifyGiveFromISR(data->txnotifytask, &xHigherPriorityTaskWoken);

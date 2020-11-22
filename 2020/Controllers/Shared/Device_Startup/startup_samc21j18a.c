@@ -191,6 +191,8 @@ void Reset_Handler(void)
  */
 void Dummy_Handler(void)
 {
+	asm("bkpt #69");
         while (1) {
         }
 }
+
