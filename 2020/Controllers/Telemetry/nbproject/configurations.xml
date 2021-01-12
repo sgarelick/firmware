@@ -16,9 +16,11 @@
         <itemPath>../Shared/Drivers/drv_can.h</itemPath>
         <itemPath>../Shared/Drivers/drv_uart.h</itemPath>
         <itemPath>Drivers/drv_can_private.h</itemPath>
-        <itemPath>Drivers/drv_divas.h</itemPath>
         <itemPath>Drivers/drv_lte.h</itemPath>
         <itemPath>Drivers/drv_main.h</itemPath>
+        <itemPath>../Shared/Drivers/drv_divas.h</itemPath>
+        <itemPath>Drivers/drv_uart_private.h</itemPath>
+        <itemPath>../Shared/Drivers/drv_serial.h</itemPath>
       </logicalFolder>
       <logicalFolder name="RTOS" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOS/Source/include/atomic.h</itemPath>
@@ -71,16 +73,17 @@
         <itemPath>../Shared/Drivers/drv_can.c</itemPath>
         <itemPath>../Shared/Drivers/drv_uart.c</itemPath>
         <itemPath>Drivers/drv_can_private.c</itemPath>
-        <itemPath>Drivers/drv_divas.c</itemPath>
         <itemPath>Drivers/drv_lte.c</itemPath>
         <itemPath>Drivers/drv_main.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_divas.c</itemPath>
+        <itemPath>Drivers/drv_uart_private.c</itemPath>
+        <itemPath>../Shared/Drivers/drv_serial.c</itemPath>
       </logicalFolder>
       <logicalFolder name="RTOS" displayName="RTOS" projectFiles="true">
         <itemPath>../Shared/RTOS/FreeRTOS/Source/croutine.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/event_groups.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/list.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/portable/GCC/ARM_CM0/port.c</itemPath>
-        <itemPath>../Shared/RTOS/FreeRTOS/Source/portable/MemMang/heap_1.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/queue.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/stream_buffer.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/tasks.c</itemPath>
@@ -88,6 +91,7 @@
         <itemPath>../Shared/RTOS/main.c</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/include/stdint.readme</itemPath>
         <itemPath>../Shared/RTOS/FreeRTOS/Source/readme.txt</itemPath>
+        <itemPath>../Shared/RTOS/FreeRTOS/Source/portable/MemMang/heap_3.c</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
@@ -99,6 +103,8 @@
   <sourceRootList>
     <Elem>../Shared/Device_Startup</Elem>
     <Elem>../Shared/RTOS</Elem>
+    <Elem>../Shared/Drivers</Elem>
+    <Elem>Drivers</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -330,14 +336,14 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
         <targetDevice>ATSAMC21J18A</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool></platformTool>
+        <platformTool>AtmelIceTool</platformTool>
         <languageToolchain>ARM</languageToolchain>
         <languageToolchainVersion>9.3.1</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <packs>
-        <pack name="CMSIS" vendor="ARM" version="5.4.0"/>
         <pack name="SAMC21_DFP" vendor="Microchip" version="3.3.72"/>
+        <pack name="CMSIS" vendor="ARM" version="5.4.0"/>
       </packs>
       <ScriptingSettings>
       </ScriptingSettings>
@@ -358,10 +364,7 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
       </compileType>
       <makeCustomizationType>
         <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
-        <makeCustomizationPreStep>set TEMPLATES=$(MSBuildProjectDirectory)\..\Shared\DBC\hsk-libs\scripts\templates.dbc2c
-set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
-"$(DevEnvDir)\shellUtils\make" -C $(MSBuildProjectDirectory)\..\Shared\DBC dbc/2020.1.0.h
-</makeCustomizationPreStep>
+        <makeCustomizationPreStep>set TEMPLATES=$(MSBuildProjectDirectory)\..\Shared\DBC\hsk-libs\scripts\templates.dbc2c set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe "$(DevEnvDir)\shellUtils\make" -C $(MSBuildProjectDirectory)\..\Shared\DBC dbc/2020.1.0.h </makeCustomizationPreStep>
         <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
         <makeCustomizationPostStep></makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
@@ -461,7 +464,7 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
         <property key="inhibit-all" value="false"/>
         <property key="make-warnings-into-errors" value="false"/>
         <property key="no-system-directories" value="false"/>
-        <property key="optimization-level" value="-O1"/>
+        <property key="optimization-level" value="-Os"/>
         <property key="position-independent" value="false"/>
         <property key="preprocessor-macros" value="DEBUG"/>
         <property key="preprocessor-macros-undefined" value=""/>
@@ -487,7 +490,7 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
         <property key="user-pack-include" value=""/>
       </ARM-Global>
       <ARM-LD>
-        <property key="additional-specs" value=""/>
+        <property key="additional-specs" value="--specs=nosys.specs"/>
         <property key="exclude-standard-libraries" value="false"/>
         <property key="extra-lib-directories" value="..\Device_Startup"/>
         <property key="fast-math" value="false"/>
@@ -507,6 +510,8 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
       </ARM-LD>
       <AtmelIceTool>
         <property key="AutoSelectMemRanges" value="auto"/>
+        <property key="arm.use_vtor" value="false"/>
+        <property key="arm.vtor_adr" value="exception_table"/>
         <property key="communication.activationmode" value="nohv"/>
         <property key="communication.interface" value="swd"/>
         <property key="communication.speed" value="2.000"/>
@@ -516,6 +521,7 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
         <property key="firmware.toolpack"
                   value="Press to select which tool pack to use"/>
         <property key="firmware.update.action" value="firmware.update.use.latest"/>
+        <property key="lastid" value=""/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="true"/>
         <property key="memories.configurationmemory" value="true"/>
@@ -540,6 +546,9 @@ set AWK=C:\Program Files (x86)\GnuWin32\bin\awk.exe
         <property key="programoptions.preserveprogramrange" value="false"/>
         <property key="programoptions.preserveuserid" value="false"/>
         <property key="programoptions.programuserotp" value="false"/>
+        <property key="script.log_level" value="0"/>
+        <property key="script.reset_delay" value="0"/>
+        <property key="script.show_output" value="false"/>
         <property key="toolpack.updateoptions"
                   value="toolpack.updateoptions.uselatestoolpack"/>
         <property key="toolpack.updateoptions.packversion"
