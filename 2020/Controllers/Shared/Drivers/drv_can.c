@@ -229,7 +229,7 @@ void CAN1_Handler()
 	CAN1_REGS->CAN_IR = 0xFFFFFFFF;
 }
 
-struct drv_can_rx_buffer_element * drv_can_get_rx_buffer(int id)
+struct drv_can_rx_buffer_element * drv_can_get_rx_buffer(enum drv_can_rx_buffer_table id)
 {
 	if (id < DRV_CAN_RX_BUFFER_COUNT)
 	{
@@ -241,7 +241,7 @@ struct drv_can_rx_buffer_element * drv_can_get_rx_buffer(int id)
 	}
 }
 
-struct drv_can_tx_buffer_element * drv_can_get_tx_buffer(int id)
+struct drv_can_tx_buffer_element * drv_can_get_tx_buffer(enum drv_can_tx_buffer_table id)
 {
 	if (id < DRV_CAN_TX_BUFFER_COUNT)
 	{
@@ -253,7 +253,7 @@ struct drv_can_tx_buffer_element * drv_can_get_tx_buffer(int id)
 	}
 }
 
-void drv_can_queue_tx_buffer(can_registers_t * bus, int id)
+void drv_can_queue_tx_buffer(can_registers_t * bus, enum drv_can_tx_buffer_table id)
 {
 	if (id < DRV_CAN_TX_BUFFER_COUNT)
 	{
@@ -261,7 +261,7 @@ void drv_can_queue_tx_buffer(can_registers_t * bus, int id)
 	}
 }
 
-bool drv_can_check_rx_buffer(can_registers_t * bus, int id)
+bool drv_can_check_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id)
 {
 	if (id < DRV_CAN_RX_BUFFER_COUNT)
 	{
@@ -280,7 +280,7 @@ bool drv_can_check_rx_buffer(can_registers_t * bus, int id)
 	}
 }
 
-void drv_can_clear_rx_buffer(can_registers_t * bus, int id)
+void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id)
 {
 	if (id < DRV_CAN_RX_BUFFER_COUNT)
 	{

@@ -9,6 +9,7 @@
 #include "drv_gpio.h"
 #include "drv_can.h"
 #include "drv_adc.h"
+#include "drv_eic.h"
 #include "sam.h"
 #include "system_samc21.h"
 
@@ -29,6 +30,7 @@ void drv_init(void)
 	drv_gpio_init();
 	drv_can_init();
 	drv_adc_init();
+	drv_eic_init();
 }
 
 /************************************************************************/
