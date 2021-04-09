@@ -3,6 +3,11 @@
 #include <stdint.h>
 #include "sam.h"
 
+#ifndef DRV_ADC_SAMPLENUM
+// accumulate 512 samples to fill 16-bit precision. see datasheet page 875
+#define DRV_ADC_SAMPLENUM	ADC_AVGCTRL_SAMPLENUM_512
+#endif
+
 struct drv_adc_channelConfig {
 	uint16_t adc_id:1;
 	uint16_t mux:5;
