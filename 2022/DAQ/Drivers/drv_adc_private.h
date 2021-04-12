@@ -1,5 +1,10 @@
 #pragma once
 
 enum drv_adc_channel {
+	DRV_ADC_CHANNEL_SW1,
+	DRV_ADC_CHANNEL_SW2,
+	DRV_ADC_CHANNEL_SW3,
+	DRV_ADC_CHANNEL_SW4,
+	
 	DRV_ADC_CHANNEL_COUNT
 };
