@@ -12,12 +12,28 @@
       <itemPath>../Shared/Drivers/drv_can.h</itemPath>
       <itemPath>../Shared/Drivers/drv_clock.c</itemPath>
       <itemPath>../Shared/Drivers/drv_clock.h</itemPath>
+      <itemPath>../Shared/Drivers/drv_i2c.c</itemPath>
+      <itemPath>../Shared/Drivers/drv_i2c.h</itemPath>
+      <itemPath>../Shared/Drivers/drv_spi.c</itemPath>
+      <itemPath>../Shared/Drivers/drv_spi.h</itemPath>
+      <itemPath>../Shared/Drivers/drv_uart.c</itemPath>
+      <itemPath>../Shared/Drivers/drv_uart.h</itemPath>
+      <itemPath>../Shared/Drivers/drv_serial.c</itemPath>
+      <itemPath>../Shared/Drivers/drv_serial.h</itemPath>
       <itemPath>Drivers/drv_clock_private.c</itemPath>
       <itemPath>Drivers/drv_clock_private.h</itemPath>
       <itemPath>Drivers/drv_adc_private.c</itemPath>
       <itemPath>Drivers/drv_adc_private.h</itemPath>
       <itemPath>Drivers/drv_can_private.c</itemPath>
       <itemPath>Drivers/drv_can_private.h</itemPath>
+      <itemPath>Drivers/drv_i2c_private.c</itemPath>
+      <itemPath>Drivers/drv_i2c_private.h</itemPath>
+      <itemPath>Drivers/drv_spi_private.c</itemPath>
+      <itemPath>Drivers/drv_spi_private.h</itemPath>
+      <itemPath>Drivers/drv_uart_private.c</itemPath>
+      <itemPath>Drivers/drv_uart_private.h</itemPath>
+      <itemPath>Drivers/drv_lte.c</itemPath>
+      <itemPath>Drivers/drv_lte.h</itemPath>
     </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
@@ -103,7 +119,7 @@
         <targetDevice>ATSAMC21G18A</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>noID</platformTool>
+        <platformTool></platformTool>
         <languageToolchain>ARM</languageToolchain>
         <languageToolchainVersion>9.3.1</languageToolchainVersion>
         <platform>3</platform>
