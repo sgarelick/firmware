@@ -257,14 +257,12 @@ void drv_lte_task(void * pvParameters)
 	{
 		// Check network registration
 		network_registered = sara_check_network_registration();
-		globalError = network_registered ? 0 : 2;
 		// Check location data
 		sara_update_rmc();
 		// Wait a second, unless we get interrupted by a new task
 		ulTaskNotifyTake(pdTRUE, 1000);
 		if (message_to_send && network_registered)
 		{
-			globalError = 4;
 			while (udp_socket_id == -1)
 			{
 				udp_socket_id = sara_open_udp_socket();
@@ -275,14 +273,12 @@ void drv_lte_task(void * pvParameters)
 				{
 					// success
 					message_to_send = false;
-					globalError = 0;
 				}
 				else
 				{
 					// failure
 					sara_close_socket(udp_socket_id);
 					udp_socket_id = -1;
-					globalError = 6;
 				}
 				xSemaphoreGive(transmission_semaphore);
 			}

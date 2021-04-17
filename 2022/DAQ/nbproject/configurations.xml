@@ -3,6 +3,8 @@
   <logicalFolder name="root" displayName="root" projectFiles="true">
     <logicalFolder name="f2" displayName="Applications" projectFiles="true">
       <itemPath>Applications/app_main.c</itemPath>
+      <itemPath>Applications/app_display.c</itemPath>
+      <itemPath>Applications/app_display.h</itemPath>
     </logicalFolder>
     <logicalFolder name="f1" displayName="Drivers" projectFiles="true">
       <itemPath>Drivers/drv_main.c</itemPath>
@@ -34,6 +36,8 @@
       <itemPath>Drivers/drv_uart_private.h</itemPath>
       <itemPath>Drivers/drv_lte.c</itemPath>
       <itemPath>Drivers/drv_lte.h</itemPath>
+      <itemPath>../Shared/Drivers/drv_divas.c</itemPath>
+      <itemPath>../Shared/Drivers/drv_divas.h</itemPath>
     </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
@@ -119,7 +123,7 @@
         <targetDevice>ATSAMC21G18A</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool></platformTool>
+        <platformTool>AtmelIceTool</platformTool>
         <languageToolchain>ARM</languageToolchain>
         <languageToolchainVersion>9.3.1</languageToolchainVersion>
         <platform>3</platform>
@@ -210,7 +214,7 @@
         <property key="inhibit-all" value="false"/>
         <property key="make-warnings-into-errors" value="false"/>
         <property key="no-system-directories" value="false"/>
-        <property key="optimization-level" value="-Os"/>
+        <property key="optimization-level" value=""/>
         <property key="position-independent" value="false"/>
         <property key="preprocessor-macros" value="BOARD_ID=EL_07002_22"/>
         <property key="preprocessor-macros-undefined" value=""/>
