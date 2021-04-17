@@ -5,6 +5,8 @@
       <itemPath>Applications/app_main.c</itemPath>
       <itemPath>Applications/app_display.c</itemPath>
       <itemPath>Applications/app_display.h</itemPath>
+      <itemPath>Applications/app_inputs.c</itemPath>
+      <itemPath>Applications/app_inputs.h</itemPath>
     </logicalFolder>
     <logicalFolder name="f1" displayName="Drivers" projectFiles="true">
       <itemPath>Drivers/drv_main.c</itemPath>
