@@ -5,6 +5,7 @@
 #include "task.h"
 #include "sam.h"
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 
 const uint8_t SevenSegmentASCII[96] = {
@@ -135,7 +136,7 @@ static uint16_t make_code(uint8_t code) {
 static void tlc59108_set_output_state(uint8_t address, uint8_t state)
 {
 	uint16_t tx = make_code(state);
-	drv_i2c_write_register(DRV_I2C_CHANNEL_LED, address, 0x80 | 0xC, &tx, 2);
+	drv_i2c_write_register(DRV_I2C_CHANNEL_LED, address, 0x80 | 0xC, (const uint8_t *)&tx, 2);
 }
 
 static void display_gear(char c)
@@ -174,7 +175,7 @@ static void set_digit(uint8_t display_index, uint8_t digit, bool dp) {
 	uint16_t tx = make_code(code);
 	tx |= (dp << 14);
 	
-	drv_i2c_write_register(DRV_I2C_CHANNEL_LED, address, 0x80 | 0xC, &tx, 2);
+	drv_i2c_write_register(DRV_I2C_CHANNEL_LED, address, 0x80 | 0xC, (const uint8_t *)&tx, 2);
 }
 
 static void set_shift_lights(int n)
@@ -241,6 +242,8 @@ static struct
 	struct {
 		int previousPosition, currentPosition;
 	} dials[NUM_DIALS];
+	bool drsHeld;
+	bool shiftHeld;
 } app_display_data = {0};
 
 static void StatusTask()
@@ -281,6 +284,7 @@ static void StatusTask()
 	
 	int rpm = 0;
 	unsigned warning = 0;
+	int gear = 0;
 	while (1)
 	{
 		// Check for changes in dial position and display value if so
@@ -300,9 +304,46 @@ static void StatusTask()
 			}
 			app_display_data.dials[i].previousPosition = app_display_data.dials[i].currentPosition;
 		}
+		// Check for button presses and display if so
+		if (app_inputs_get_button(APP_INPUTS_DRS_L) || app_inputs_get_button(APP_INPUTS_DRS_R))
+		{
+			if (!app_display_data.drsHeld)
+			{
+				display_gear(' ');
+				display_rpm("DrS");
+				display_shift(0);
+				display_warning(0);
+				vTaskDelay(500);
+			}
+			app_display_data.drsHeld = true;
+		}
+		else
+		{
+			app_display_data.drsHeld = false;
+		}
+		if (app_inputs_get_button(APP_INPUTS_MISC_L) || app_inputs_get_button(APP_INPUTS_MISC_R))
+		{
+			display_gear(' ');
+			display_rpm("MISC");
+			display_shift(0);
+			display_warning(0);
+			vTaskDelay(1000);
+		}
+		if (app_inputs_get_button(APP_INPUTS_SHIFT_DOWN))
+		{
+			gear--;
+			display_rpm("DOWN");
+			vTaskDelay(500);
+		}
+		if (app_inputs_get_button(APP_INPUTS_SHIFT_UP))
+		{
+			gear++;
+			display_rpm("UP");
+			vTaskDelay(500);
+		}
 		
 		set_rpm(rpm);
-		display_gear('1');
+		display_gear(gear > 0 ? (gear + '0') : 'n');
 		display_warning(warning);
 		rpm += 10;
 		if (rpm > 11000)
