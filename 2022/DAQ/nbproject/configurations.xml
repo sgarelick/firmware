@@ -40,6 +40,8 @@
       <itemPath>Drivers/drv_lte.h</itemPath>
       <itemPath>../Shared/Drivers/drv_divas.c</itemPath>
       <itemPath>../Shared/Drivers/drv_divas.h</itemPath>
+      <itemPath>Drivers/drv_rtc.c</itemPath>
+      <itemPath>Drivers/drv_rtc.h</itemPath>
     </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
@@ -258,6 +260,7 @@
         <property key="size-optimized-library" value="false"/>
         <property key="sram-segment" value=""/>
         <property key="unsafe-math" value="false"/>
+        <appendMe value="-DSTACK_SIZE=512"/>
       </ARM-LD>
       <AtmelIceTool>
         <property key="AutoSelectMemRanges" value="auto"/>

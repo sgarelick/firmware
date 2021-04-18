@@ -20,7 +20,7 @@
 #include <math.h>
 
 #define LTE_POWER_GROUP 0
-#define LTE_POWER_PORT PORT_PA10
+#define LTE_POWER_PORT PORT_PA14
 
 #define DEST_IP "23.84.26.120"
 #define DEST_PORT 9999U

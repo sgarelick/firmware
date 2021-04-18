@@ -5,6 +5,8 @@
 #include <drv_spi.h>
 #include <drv_uart.h>
 #include <drv_divas.h>
+#include "drv_lte.h"
+#include "drv_rtc.h"
 
 // Warning: this is not running in an RTOS task
 void drv_init(void)
@@ -15,5 +17,7 @@ void drv_init(void)
 	//drv_can_init();
 	drv_i2c_init();
 	//drv_spi_init();
-	//drv_uart_init();
+	drv_uart_init();
+	drv_rtc_init();
+	drv_lte_init();
 }

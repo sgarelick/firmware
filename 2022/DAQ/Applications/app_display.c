@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 const uint8_t SevenSegmentASCII[96] = {
 	0x00, /* (space) */
@@ -144,13 +145,20 @@ static void display_gear(char c)
 	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_GEAR, SevenSegmentASCII[c - 0x20]);
 }
 
-static void display_rpm(const char *str)
+static void display_rpm(const char *str, unsigned dpmask)
 {
-	int n = strlen(str);
-	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_1, n > 0 ? SevenSegmentASCII[str[0] - 0x20] : 0);
-	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_2, n > 1 ? SevenSegmentASCII[str[1] - 0x20] : 0);
-	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_3, n > 2 ? SevenSegmentASCII[str[2] - 0x20] : 0);
-	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_4, n > 3 ? SevenSegmentASCII[str[3] - 0x20] : 0);
+	int i, n;
+	char c[4];
+	n = strlen(str);
+	for (i = 0; i < 4; ++i)
+	{
+		c[i] = n > i ? SevenSegmentASCII[str[i] - 0x20] : 0;
+		c[i] |= (dpmask & (1 << i)) << (7-i);
+	}
+	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_1, c[0]);
+	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_2, c[1]);
+	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_3, c[2]);
+	tlc59108_set_output_state(APP_DISPLAY_CHANNEL_RPM_4, c[3]);
 }
 
 static void display_shift(unsigned bitmask)
@@ -237,6 +245,15 @@ static void set_rpm(int rpm) {
 
 static xTaskHandle StatusTaskID;
 
+enum display_mode
+{
+	DM_RPM,
+	DM_MPH,
+	DM_TIME,
+	
+	DM_COUNT
+};
+
 static struct
 {
 	struct {
@@ -244,6 +261,7 @@ static struct
 	} dials[NUM_DIALS];
 	bool drsHeld;
 	bool shiftHeld;
+	enum display_mode displayMode;
 } app_display_data = {0};
 
 static void StatusTask()
@@ -265,7 +283,7 @@ static void StatusTask()
 	vTaskDelay(1);
 	
 	// Initialization visual / power on self test
-	display_rpm("InIt");
+	display_rpm("InIt", 0);
 	vTaskDelay(INIT_DELAY);
 	display_shift(0x1F);
 	vTaskDelay(INIT_DELAY);	
@@ -277,7 +295,7 @@ static void StatusTask()
 	display_warning(0x1F);
 	vTaskDelay(INIT_DELAY);
 	display_warning(0);
-	display_rpm("\x7F\x7F\x7F\x7F");
+	display_rpm("\x7F\x7F\x7F\x7F", 0xF);
 	display_gear('\x7F');
 	vTaskDelay(INIT_DELAY);
 	
@@ -285,6 +303,7 @@ static void StatusTask()
 	int rpm = 0;
 	unsigned warning = 0;
 	int gear = 0;
+	app_display_data.displayMode = DM_TIME;
 	while (1)
 	{
 		// Check for changes in dial position and display value if so
@@ -297,7 +316,7 @@ static void StatusTask()
 				char s[5] = {0};
 				snprintf(s, 5, "%d", app_display_data.dials[i].currentPosition);
 				display_gear(i + '1');
-				display_rpm(s);
+				display_rpm(s, 0);
 				display_shift(0);
 				display_warning(0);
 				vTaskDelay(1000);
@@ -310,7 +329,7 @@ static void StatusTask()
 			if (!app_display_data.drsHeld)
 			{
 				display_gear(' ');
-				display_rpm("DrS");
+				display_rpm("DrS", 0);
 				display_shift(0);
 				display_warning(0);
 				vTaskDelay(500);
@@ -324,7 +343,7 @@ static void StatusTask()
 		if (app_inputs_get_button(APP_INPUTS_MISC_L) || app_inputs_get_button(APP_INPUTS_MISC_R))
 		{
 			display_gear(' ');
-			display_rpm("MISC");
+			display_rpm("MISC", 0);
 			display_shift(0);
 			display_warning(0);
 			vTaskDelay(1000);
@@ -332,18 +351,44 @@ static void StatusTask()
 		if (app_inputs_get_button(APP_INPUTS_SHIFT_DOWN))
 		{
 			gear--;
-			display_rpm("DOWN");
+			display_rpm("DOWN", 0);
 			vTaskDelay(500);
 		}
 		if (app_inputs_get_button(APP_INPUTS_SHIFT_UP))
 		{
 			gear++;
-			display_rpm("UP");
+			display_rpm("UP", 0);
 			vTaskDelay(500);
 		}
+		if (app_display_data.displayMode == DM_RPM)
+		{
+			set_rpm(rpm);
+			display_gear(gear > 0 ? (gear + '0') : 'n');
+		}
+		if (app_display_data.displayMode == DM_TIME)
+		{
+			struct tm * time = localtime(NULL);
+			char timestr[5];
+			if (time->tm_sec % 15 < 5)
+			{
+				strftime(timestr, 5, "%Y", time);
+				display_rpm(timestr, 0);
+				display_gear('y');
+			}
+			else if (time->tm_sec % 15 < 10)
+			{
+				strftime(timestr, 5, "%m%d", time);
+				display_rpm(timestr, 0b0010);
+				display_gear('d');
+			}
+			else
+			{
+				strftime(timestr, 5, "%H%M", time);
+				display_rpm(timestr, (time->tm_sec % 2 == 0) << 1);
+				display_gear('t');
+			}
+		}
 		
-		set_rpm(rpm);
-		display_gear(gear > 0 ? (gear + '0') : 'n');
 		display_warning(warning);
 		rpm += 10;
 		if (rpm > 11000)
