@@ -14,7 +14,7 @@ void drv_init(void)
 	drv_clock_init();
 	drv_divas_init();
 	drv_adc_init();
-	//drv_can_init();
+	drv_can_init();
 	drv_i2c_init();
 	//drv_spi_init();
 	drv_uart_init();

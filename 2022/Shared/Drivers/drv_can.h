@@ -223,11 +223,22 @@ void drv_can_queue_tx_buffer(can_registers_t * bus, enum drv_can_tx_buffer_table
 bool drv_can_check_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id);
 void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id);
 
+#define DRV_CAN_STD_FILTER(BUS, MSG) { \
+	.SIDFE_0 = { \
+		.bit = { \
+			.SFEC = CAN_XIDFE_0_EFEC_STRXBUF_Val, \
+			.SFID1 = BUS ## _ ## MSG ## _FRAME_ID, \
+			.SFID2 = (0 << 9) | (0 << 6) | (DRV_CAN_RX_BUFFER_ ## BUS ## _ ## MSG) \
+		} \
+	} \
+}
+
+
 #define DRV_CAN_XTD_FILTER(BUS, MSG) { \
 	.XIDFE_0 = { \
 		.bit = { \
 			.EFEC = CAN_XIDFE_0_EFEC_STRXBUF_Val, \
-			.EFID1 = ID_ ## MSG, \
+			.EFID1 = BUS ## _ ## MSG ## _FRAME_ID, \
 		} \
 	}, \
 	.XIDFE_1 = { \
@@ -240,14 +251,14 @@ void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table
 #define DRV_CAN_TX_BUFFER(BUS, MSG) 	[DRV_CAN_TX_BUFFER_ ## BUS ## _ ## MSG] = { \
 	.TXBE_0 = { \
 		.bit = { \
-			.ID = ID_ ## MSG, \
+			.ID = BUS ## _ ## MSG ## _FRAME_ID, \
 			.RTR = 0, \
-			.XTD = EXT_ ## MSG, \
+			.XTD = BUS ## _ ## MSG ## _IS_EXTENDED, \
 		} \
 	}, \
 	.TXBE_1 = { \
 		.bit = { \
-			.DLC = DLC_ ## MSG, \
+			.DLC = BUS ## _ ## MSG ## _LENGTH, \
 			.EFC = 0, \
 		} \
 	} \

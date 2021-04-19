@@ -10,6 +10,7 @@
 #define DRV_LTE_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 void drv_lte_init(void);
 void drv_lte_periodic(void);
@@ -25,6 +26,8 @@ struct drv_lte_time
 
 const struct drv_lte_location * drv_lte_get_last_location(void);
 const struct drv_lte_time * drv_lte_get_last_time(void);
+
+bool drv_lte_is_connected(void);
 
 uint8_t * drv_lte_get_transmission_queue(void);
 void drv_lte_queue_transmission(int length);

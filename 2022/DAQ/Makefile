@@ -53,8 +53,12 @@ RANLIB=ranlib
 # build
 build: .build-post
 
-.build-pre:
-# Add your pre 'build' code here...
+.build-pre: pe3.c vehicle.c
+
+pe3.c: ../PE3.dbc
+	cantools generate_c_source --no-floating-point-numbers ../PE3.dbc
+vehicle.c: ../VEHICLE.dbc
+	cantools generate_c_source --no-floating-point-numbers ../VEHICLE.dbc
 
 .build-post: .build-impl
 # Add your post 'build' code here...

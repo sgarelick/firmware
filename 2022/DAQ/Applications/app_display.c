@@ -8,6 +8,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include "drv_rtc.h"
+#include "drv_lte.h"
+#include "drv_can.h"
+#include "pe3.h"
+#include "app_datalogger.h"
 
 const uint8_t SevenSegmentASCII[96] = {
 	0x00, /* (space) */
@@ -240,6 +245,21 @@ static void set_rpm(int rpm) {
 	}
 }
 
+static void scroll_text(const char *s)
+{
+	int i, n;
+	n = strlen(s);
+	display_gear(' ');
+	display_shift(0);
+	display_warning(0);
+	for (i = 0; i < n-3; ++i)
+	{
+		display_rpm(s + i, 0);
+		vTaskDelay(200);
+	}
+	vTaskDelay(500);
+}
+
 
 #define INIT_DELAY 200
 
@@ -250,19 +270,115 @@ enum display_mode
 	DM_RPM,
 	DM_MPH,
 	DM_TIME,
+	DM_DEBUG,
 	
 	DM_COUNT
 };
 
+#define DEBUG_LEN 128
+
 static struct
 {
-	struct {
-		int previousPosition, currentPosition;
-	} dials[NUM_DIALS];
-	bool drsHeld;
-	bool shiftHeld;
-	enum display_mode displayMode;
+	int eARBFront, eARBFrontPrevious;
+	int eARBRear, eARBRearPrevious;
+	int daqMode, daqModePrevious;
+	int displayMode, displayModePrevious;
+	bool eARBFrontChanged, eARBRearChanged, daqModeChanged, displayModeChanged;
+	bool drs, drsPrevious, drsChanged;
+	bool shiftUp, shiftUpPrevious, shiftUpChanged;
+	bool shiftDown, shiftDownPrevious, shiftDownChanged;
+	bool misc, miscPrevious, miscChanged;
+	int rpm, temp;
+	bool rpmValid, tempValid;
+	union {
+		struct {
+			uint8_t daq:1;
+			uint8_t telemetry:1;
+			uint8_t datalogger:1;
+			uint8_t fuse:1;
+			uint8_t coolant:1;
+		} bit;
+		uint8_t reg;
+	} warnings;
+	char debug[DEBUG_LEN];
 } app_display_data = {0};
+
+static void read_inputs()
+{
+	strcpy(app_display_data.debug, " ");
+	app_display_data.eARBFrontPrevious = app_display_data.eARBFront;
+	app_display_data.eARBRearPrevious = app_display_data.eARBRear;
+	app_display_data.daqModePrevious = app_display_data.daqMode;
+	app_display_data.displayModePrevious = app_display_data.displayMode;
+	app_display_data.drsPrevious = app_display_data.drs;
+	app_display_data.shiftUpPrevious = app_display_data.shiftUp;
+	app_display_data.shiftDownPrevious = app_display_data.shiftDown;
+	app_display_data.miscPrevious = app_display_data.misc;
+	
+	app_display_data.eARBFront = app_inputs_get_dial(APP_INPUTS_SW1);
+	app_display_data.eARBRear = app_inputs_get_dial(APP_INPUTS_SW2);
+	app_display_data.daqMode = app_inputs_get_dial(APP_INPUTS_SW3);
+	app_display_data.displayMode = app_inputs_get_dial(APP_INPUTS_SW4)-1;
+	app_display_data.drs = (app_inputs_get_button(APP_INPUTS_DRS_L) || app_inputs_get_button(APP_INPUTS_DRS_R));
+	app_display_data.shiftUp = app_inputs_get_button(APP_INPUTS_SHIFT_UP);
+	app_display_data.shiftDown = app_inputs_get_button(APP_INPUTS_SHIFT_DOWN);
+	app_display_data.misc = (app_inputs_get_button(APP_INPUTS_MISC_L) || app_inputs_get_button(APP_INPUTS_MISC_R));
+	
+	app_display_data.eARBFrontChanged = (app_display_data.eARBFront != app_display_data.eARBFrontPrevious);
+	app_display_data.eARBRearChanged = (app_display_data.eARBRear != app_display_data.eARBRearPrevious);
+	app_display_data.daqModeChanged = (app_display_data.daqMode != app_display_data.daqModePrevious);
+	app_display_data.displayModeChanged = (app_display_data.displayMode != app_display_data.displayModePrevious);
+	app_display_data.drsChanged = (app_display_data.drs != app_display_data.drsPrevious && app_display_data.drs);
+	app_display_data.shiftUpChanged = (app_display_data.shiftUp != app_display_data.shiftUpPrevious && app_display_data.shiftUp);
+	app_display_data.shiftDownChanged = (app_display_data.shiftDown != app_display_data.shiftDownPrevious && app_display_data.shiftDown);
+	app_display_data.miscChanged = (app_display_data.misc != app_display_data.miscPrevious && app_display_data.misc);
+	
+	// Read engine speed
+	const uint8_t * raw_pe01 = app_datalogger_read_double_buffer(DRV_CAN_RX_BUFFER_PE3_PE01);
+	if (raw_pe01)
+	{
+		struct pe3_pe01_t pe01;
+		pe3_pe01_unpack(&pe01, raw_pe01, 8);
+		if (pe3_pe01_engine_speed_is_in_range(pe01.engine_speed))
+		{
+			app_display_data.rpm = pe01.engine_speed;
+			app_display_data.rpmValid = true;
+		}
+		else
+		{
+			app_display_data.rpmValid = false;
+		}
+	}
+	else
+	{
+		app_display_data.rpmValid = false;
+		strcat(app_display_data.debug, "nO PE01 - ");
+	}
+	
+	bool sb_front1_missing = app_datalogger_is_missing(DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
+	if (sb_front1_missing)
+	{
+		strcat(app_display_data.debug, "nO SbF1 - ");
+	}
+	bool lte_missing = !drv_lte_is_connected();
+	if (lte_missing)
+	{
+		strcat(app_display_data.debug, "LtE nr - ");
+	}
+	bool fuse_blown = app_inputs_get_button(APP_INPUTS_FUSE);
+	if (fuse_blown)
+	{
+		strcat(app_display_data.debug, "FuSE bLOn - ");
+	}
+	
+	app_display_data.warnings.bit.daq = sb_front1_missing;
+	app_display_data.warnings.bit.telemetry = lte_missing;
+	app_display_data.warnings.bit.datalogger = true;
+	app_display_data.warnings.bit.fuse = fuse_blown;
+	app_display_data.warnings.bit.coolant = true;
+	
+	strcat(app_display_data.debug, ".");
+}
 
 static void StatusTask()
 {
@@ -299,107 +415,140 @@ static void StatusTask()
 	display_gear('\x7F');
 	vTaskDelay(INIT_DELAY);
 	
-	
-	int rpm = 0;
-	unsigned warning = 0;
+	app_display_data.warnings.reg = 0;
 	int gear = 0;
 	app_display_data.displayMode = DM_TIME;
+	read_inputs();
 	while (1)
 	{
+		read_inputs();
 		// Check for changes in dial position and display value if so
-		for (int i = 0; i < NUM_DIALS; ++i)
+		if (app_display_data.eARBFrontChanged)
 		{
-			app_display_data.dials[i].currentPosition = app_inputs_get_dial(i);
-			if (app_display_data.dials[i].currentPosition != app_display_data.dials[i].previousPosition
-					&& app_display_data.dials[i].previousPosition != 0)
-			{
-				char s[5] = {0};
-				snprintf(s, 5, "%d", app_display_data.dials[i].currentPosition);
-				display_gear(i + '1');
-				display_rpm(s, 0);
-				display_shift(0);
-				display_warning(0);
-				vTaskDelay(1000);
-			}
-			app_display_data.dials[i].previousPosition = app_display_data.dials[i].currentPosition;
-		}
-		// Check for button presses and display if so
-		if (app_inputs_get_button(APP_INPUTS_DRS_L) || app_inputs_get_button(APP_INPUTS_DRS_R))
-		{
-			if (!app_display_data.drsHeld)
-			{
-				display_gear(' ');
-				display_rpm("DrS", 0);
-				display_shift(0);
-				display_warning(0);
-				vTaskDelay(500);
-			}
-			app_display_data.drsHeld = true;
-		}
-		else
-		{
-			app_display_data.drsHeld = false;
-		}
-		if (app_inputs_get_button(APP_INPUTS_MISC_L) || app_inputs_get_button(APP_INPUTS_MISC_R))
-		{
-			display_gear(' ');
-			display_rpm("MISC", 0);
+			char s[5] = {0};
+			snprintf(s, 5, "%d", app_display_data.eARBFront);
+			display_gear('F');
+			display_rpm(s, 0);
 			display_shift(0);
 			display_warning(0);
 			vTaskDelay(1000);
 		}
-		if (app_inputs_get_button(APP_INPUTS_SHIFT_DOWN))
+		if (app_display_data.eARBRearChanged)
 		{
-			gear--;
-			display_rpm("DOWN", 0);
-			vTaskDelay(500);
+			char s[5] = {0};
+			snprintf(s, 5, "%d", app_display_data.eARBRear);
+			display_gear('R');
+			display_rpm(s, 0);
+			display_shift(0);
+			display_warning(0);
+			vTaskDelay(1000);
 		}
-		if (app_inputs_get_button(APP_INPUTS_SHIFT_UP))
+		if (app_display_data.daqModeChanged)
 		{
-			gear++;
-			display_rpm("UP", 0);
-			vTaskDelay(500);
+			const char *s;
+			switch (app_display_data.daqMode)
+			{
+			case 1:
+				s = "ACCELErAtIOn";
+				break;
+			case 2:
+				s = "AUtOCrOSS";
+				break;
+			case 3:
+				s = "brAkES";
+				break;
+			}
+			scroll_text(s);
 		}
+		if (app_display_data.displayModeChanged)
+		{
+			const char *s;
+			switch (app_display_data.displayMode)
+			{
+			case DM_RPM:
+				s = "rpMM";
+				break;
+			case DM_MPH:
+				s = "MMPH";
+				break;
+			case DM_TIME:
+				s = "TIME";
+				break;
+			case DM_DEBUG:
+				s = "ErrS";
+				break;
+			}
+			scroll_text(s);
+		}
+		if (app_display_data.drsChanged)
+		{
+			scroll_text("DrS");
+		}
+		if (app_display_data.miscChanged)
+		{
+			scroll_text("MISC");
+		}
+		if (app_display_data.shiftDownChanged)
+		{
+			scroll_text	("DOWN");
+		}
+		if (app_display_data.shiftUpChanged)
+		{
+			scroll_text	("UP");
+		}
+		// Update warnings
 		if (app_display_data.displayMode == DM_RPM)
 		{
-			set_rpm(rpm);
+			if (app_display_data.rpmValid)
+			{
+				set_rpm(app_display_data.rpm);
+			}
+			else
+			{
+				display_rpm("Err", 0);
+				display_shift(0);
+			}
+			
 			display_gear(gear > 0 ? (gear + '0') : 'n');
 		}
 		if (app_display_data.displayMode == DM_TIME)
 		{
 			struct tm * time = localtime(NULL);
 			char timestr[5];
-			if (time->tm_sec % 15 < 5)
+			if (time->tm_sec % 15 < 2)
 			{
 				strftime(timestr, 5, "%Y", time);
 				display_rpm(timestr, 0);
 				display_gear('y');
 			}
-			else if (time->tm_sec % 15 < 10)
+			else if (time->tm_sec % 15 < 5)
 			{
 				strftime(timestr, 5, "%m%d", time);
 				display_rpm(timestr, 0b0010);
 				display_gear('d');
 			}
-			else
+			else if (time->tm_sec % 15 < 10)
 			{
 				strftime(timestr, 5, "%H%M", time);
 				display_rpm(timestr, (time->tm_sec % 2 == 0) << 1);
 				display_gear('t');
 			}
+			else
+			{
+				strftime(timestr, 5, "%S", time);
+				snprintf(timestr + 2, 3, "%02d", drv_rtc_get_ms() / 10);
+				display_rpm(timestr, 0b0010);
+				display_gear('s');
+			}
+		}
+		if (app_display_data.displayMode == DM_DEBUG)
+		{
+			scroll_text(app_display_data.debug);
 		}
 		
-		display_warning(warning);
-		rpm += 10;
-		if (rpm > 11000)
-		{
-			rpm = 0;
-		}
-		warning += 1;
-		if (warning > 31)
-		{
-			warning = 0;
-		}
+		
+		
+		display_warning(app_display_data.warnings.reg);
 		vTaskDelay(50);
 	}
 	vTaskDelete(NULL);

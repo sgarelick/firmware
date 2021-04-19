@@ -18,6 +18,12 @@ static struct drv_can_tx_buffer_element can_tx_buffers[DRV_CAN_TX_BUFFER_COUNT];
 
 void drv_can_init(void)
 {
+#ifdef CAN0_STBY_PIN
+	PORT_REGS->GROUP[CAN0_STBY_PIN / 32].PORT_DIRSET = 1 << (CAN0_STBY_PIN % 32);
+#endif
+#ifdef CAN1_STBY_PIN
+	PORT_REGS->GROUP[CAN1_STBY_PIN / 32].PORT_DIRSET = 1 << (CAN1_STBY_PIN % 32);
+#endif
 	// set up CAN supplying clock generator at 8MHz
 	GCLK_REGS->GCLK_GENCTRL[8] =
 			GCLK_GENCTRL_GENEN(1) | GCLK_GENCTRL_SRC_OSC48M | GCLK_GENCTRL_DIV(6) |

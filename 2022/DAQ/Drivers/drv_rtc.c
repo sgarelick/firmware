@@ -32,6 +32,7 @@ static struct drv_rtc_data {
 	uint8_t bcd[7];
 	volatile uint32_t clock_reg;
 	struct drv_lte_time lte;
+	volatile TickType_t ms_epoch;
 } drv_rtc_data = {0};
 
 static void update_localtime_from_bcd(void)
@@ -164,6 +165,7 @@ void RTC_Handler()
 	RTC_REGS->MODE2.RTC_INTFLAG = 0xFFFF;
 	// Update new time
 	drv_rtc_data.clock_reg = RTC_REGS->MODE2.RTC_CLOCK;
+	drv_rtc_data.ms_epoch = xTaskGetTickCountFromISR();
 	update_localtime_from_clockreg();
 	__enable_irq();
 }
@@ -183,7 +185,12 @@ void drv_rtc_init(void)
 	RTC_REGS->MODE2.RTC_CTRLA |= RTC_MODE2_CTRLA_ENABLE(1);
 	while (RTC_REGS->MODE2.RTC_SYNCBUSY);
 
-	xTaskCreate(RTCTask, "RTC", configMINIMAL_STACK_SIZE + 64, NULL, 1, &RTCTaskId);
+	xTaskCreate(RTCTask, "RTC", configMINIMAL_STACK_SIZE + 64, NULL, 3, &RTCTaskId);
+}
+
+int drv_rtc_get_ms(void)
+{
+	return xTaskGetTickCount() - drv_rtc_data.ms_epoch;
 }
 
 #ifdef DWORD

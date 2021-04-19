@@ -69,6 +69,11 @@ void drv_lte_cancel_transmission(void)
 	xSemaphoreGive(transmission_semaphore);
 }
 
+bool drv_lte_is_connected(void)
+{
+	return network_registered;
+}
+
 
 
 void drv_lte_init()

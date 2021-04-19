@@ -14,5 +14,7 @@
 
 void drv_rtc_init(void);
 
+int drv_rtc_get_ms(void);
+
 #endif	/* DRV_RTC_H */
 
