@@ -12,8 +12,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void drv_lte_init(void);
-void drv_lte_periodic(void);
 
 struct drv_lte_location
 {
@@ -24,14 +22,16 @@ struct drv_lte_time
 	int year, month, day, hour, minute, second;
 };
 
+void drv_lte_init(void);
+bool drv_lte_configure(void);
+bool drv_lte_is_network_registered(void);
+bool drv_lte_is_logged_in(void);
+bool drv_lte_mqtt_login(void);
+bool drv_lte_mqtt_publish(const char *topic, const char *message);
+
 const struct drv_lte_location * drv_lte_get_last_location(void);
 const struct drv_lte_time * drv_lte_get_last_time(void);
 
-bool drv_lte_is_connected(void);
-
-uint8_t * drv_lte_get_transmission_queue(void);
-void drv_lte_queue_transmission(int length);
-void drv_lte_cancel_transmission(void);
 
 
 

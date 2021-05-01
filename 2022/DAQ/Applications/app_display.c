@@ -361,7 +361,7 @@ static void read_inputs()
 	{
 		strcat(app_display_data.debug, "nO SbF1 - ");
 	}
-	bool lte_missing = !drv_lte_is_connected();
+	bool lte_missing = !drv_lte_is_logged_in();
 	if (lte_missing)
 	{
 		strcat(app_display_data.debug, "LtE nr - ");

@@ -100,6 +100,7 @@ static void DataTask(void* n)
 		if (xSemaphoreTake(app_data_data.mutex, DELAY_PERIOD))
 		{
 			copy_buffer(CAN0_REGS, DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
+			copy_buffer(CAN0_REGS, DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS2);
 			
 			xSemaphoreGive(app_data_data.mutex);
 		}

@@ -22,76 +22,24 @@
 #define LTE_POWER_GROUP 0
 #define LTE_POWER_PORT PORT_PA14
 
-#define DEST_IP "23.84.26.120"
-#define DEST_PORT 9999U
-
-static struct drv_lte_location last_location;
-static TickType_t last_location_time = 0;
-static struct drv_lte_time last_time;
-static TickType_t last_time_time = 0;
-static bool network_registered = false;
-static volatile bool message_to_send = false;
-static int udp_socket_id = -1;
-static uint8_t udp_message_data[256];
-static unsigned udp_message_length = 0;
-static SemaphoreHandle_t transmission_semaphore;
-
-static xTaskHandle lteTaskId;
-
-static void drv_lte_task(void*);
-static void drv_lte_parse_nmea_rmc(char *);
-
-uint8_t * drv_lte_get_transmission_queue(void)
-{
-	uint8_t * queue = NULL;
-	if (message_to_send == false)
-	{
-		if (xSemaphoreTake(transmission_semaphore, 0))
-		{
-			queue = udp_message_data;
-		}
-	}
-	return queue;
-}
-
-void drv_lte_queue_transmission(int length)
-{
-	udp_message_length = length;
-	xSemaphoreGive(transmission_semaphore);
-	message_to_send = true;
-	xTaskNotifyGive(lteTaskId);
-}
-
-void drv_lte_cancel_transmission(void)
-{
-	message_to_send = false;
-	udp_message_length = 0;
-	xSemaphoreGive(transmission_semaphore);
-}
-
-bool drv_lte_is_connected(void)
-{
-	return network_registered;
-}
+#define MQTT_CLIENT_ID "2022"
+#define MQTT_HOST "3.tcp.ngrok.io"
+#define MQTT_PORT "22463"
 
 
+// Private data
 
-void drv_lte_init()
-{
-	last_location_time = 0;
-	PORT_REGS->GROUP[LTE_POWER_GROUP].PORT_DIRSET = LTE_POWER_PORT;
-	
-	transmission_semaphore = xSemaphoreCreateMutex();
-	vQueueAddToRegistry(transmission_semaphore, "LTETX");
-	
-	xTaskCreate(drv_lte_task, "LTE", configMINIMAL_STACK_SIZE + 1000, NULL, 4, &lteTaskId);
-}
+static struct {
+	bool logged_in;
+	struct drv_lte_location last_location;
+	TickType_t last_location_time;
+	struct drv_lte_time last_time;
+	TickType_t last_time_time;
+	char cmd_buf[100];
+} drv_lte_data = {0};
 
-void drv_lte_periodic()
-{
-}
 
-static char cmd_buf[100];
+// Private functions
 
 static const char * at_wait_resp(int timeout)
 {
@@ -107,8 +55,8 @@ static const char * at_wait_resp(int timeout)
 		else
 		{
 			// We got an information text response
-			strncpy(cmd_buf, response, 100);
-			if (strstr(cmd_buf, "$GPRMC"))
+			strncpy(drv_lte_data.cmd_buf, response, 100);
+			if (strstr(drv_lte_data.cmd_buf, "$GPRMC"))
 			{
 				drv_uart_read_line(DRV_UART_CHANNEL_LTE, timeout, "\r\n\r");
 			}
@@ -120,7 +68,7 @@ static const char * at_wait_resp(int timeout)
 				{
 					if (code == 0)
 					{
-						return cmd_buf;
+						return drv_lte_data.cmd_buf;
 					}
 				}
 			}
@@ -192,14 +140,14 @@ static inline int sara_open_udp_socket()
 
 static inline int sara_close_socket(int sock)
 {
-	snprintf(cmd_buf, 100, "AT+USOCL=%d\r", sock);
-	return at_cmd(cmd_buf, 120000);
+	snprintf(drv_lte_data.cmd_buf, 100, "AT+USOCL=%d\r", sock);
+	return at_cmd(drv_lte_data.cmd_buf, 120000);
 }
 
 static inline int sara_send_to_socket(int sock, const char * dest, int port, const uint8_t *data, int length)
 {
-	snprintf(cmd_buf, 100, "AT+USOST=%d,\"%s\",%d,%d\r", sock, dest, port, length);
-	if (at_cmd_custom(cmd_buf, "@", 130000))
+	snprintf(drv_lte_data.cmd_buf, 100, "AT+USOST=%d,\"%s\",%d,%d\r", sock, dest, port, length);
+	if (at_cmd_custom(drv_lte_data.cmd_buf, "@", 130000))
 	{
 		drv_uart_send_data(DRV_UART_CHANNEL_LTE, data, length);
 		if (at_wait_resp(130000))
@@ -210,85 +158,23 @@ static inline int sara_send_to_socket(int sock, const char * dest, int port, con
 	return false;
 }
 
+static inline int sara_publish_topic_message(const char *topic, const char *message)
+{
+	snprintf(drv_lte_data.cmd_buf, 100, "AT+UMQTTC=2,0,0,\"%s\",\"%s\"\r", topic, message);
+	const char * response = (at_cmd_custom(drv_lte_data.cmd_buf, "+UMQTTC: 2,1\r\r\n0\r", 2000));
+	return response != NULL;
+}
+
+static void parse_nmea_rmc(char * s);
+
 static inline int sara_update_rmc()
 {
 	const char * response;
 	if ((response = at_cmd_resp("AT+UGRMC?\r", 100)) != NULL)
 	{
-		drv_lte_parse_nmea_rmc((char *)response);
+		parse_nmea_rmc((char *)response);
 	}
 	return true;
-}
-
-void drv_lte_task(void * pvParameters)
-{
-	bool initialized;
-	const char * response;
-	
-	(void)pvParameters;
-	initialized = false;
-	while (!initialized)
-	{
-		// Turn module on (if not already on)
-		PORT_REGS->GROUP[LTE_POWER_GROUP].PORT_OUTCLR = LTE_POWER_PORT;
-		vTaskDelay(500);
-		PORT_REGS->GROUP[LTE_POWER_GROUP].PORT_OUTSET = LTE_POWER_PORT;
-		vTaskDelay(1500);
-		
-		// Configure communications protocol (disable echo, disable verbose)
-		if (!at_cmd_custom("ATE0V0\r", "0\r", 10)) continue;
-		// disable CME errors (still reported as code=4)
-		if (!at_cmd("AT+CMEE=0\r", 10)) continue;
-		
-		// Check whether the GPS is on
-		response = at_cmd_resp("AT+UGPS?\r", 10000);
-		if (!response) continue;
-		if (strstr(response, "+UGPS: 0"))
-		{
-			// Try to power on GPS
-			if (!at_cmd("AT+UGPS=1,0,3\r", 10000)) continue;
-		}
-		
-		// Store GPS NMEA RMC strings (contains lat/lon, date/time, etc)
-		if (!at_cmd("AT+UGRMC=1\r", 10000)) continue;
-		
-		// Clear stuff
-		at_cmd_custom("AT+USOCL=0;+USOCL=1;+USOCL=2;+USOCL=3;+USOCL=4;+USOCL=5;+USOCL=6\r", "\r", 10);
-		
-		initialized = true;
-	}
-	
-	while (true)
-	{
-		// Check network registration
-		network_registered = sara_check_network_registration();
-		// Check location data
-		sara_update_rmc();
-		// Wait a second, unless we get interrupted by a new task
-		ulTaskNotifyTake(pdTRUE, 1000);
-		if (message_to_send && network_registered)
-		{
-			while (udp_socket_id == -1)
-			{
-				udp_socket_id = sara_open_udp_socket();
-			}
-			if (xSemaphoreTake(transmission_semaphore, 9999))
-			{
-				if (sara_send_to_socket(udp_socket_id, DEST_IP, DEST_PORT, udp_message_data, udp_message_length))
-				{
-					// success
-					message_to_send = false;
-				}
-				else
-				{
-					// failure
-					sara_close_socket(udp_socket_id);
-					udp_socket_id = -1;
-				}
-				xSemaphoreGive(transmission_semaphore);
-			}
-		}
-	}
 }
 
 
@@ -310,7 +196,7 @@ static int fields(char * src)
 /************************************************************************/
 /* Parses a string like either (lon=0) XXYY.Z+ or (lon=1) XXXYY.Z+      */
 /************************************************************************/
-int parse_lat_lon(const char * s, bool lon)
+static int parse_lat_lon(const char * s, bool lon)
 {
 	const int numDegreeDigits = lon ? 3 : 2;
 	const int minDigits = numDegreeDigits + 2 + 1 + 1; // Expect degree digits, plus minutes int digits, plus dp, plus at least one fractional digit
@@ -364,7 +250,7 @@ static void twotwotwo(const char *s, int *one, int *two, int *three)
 	*three = (s[4] - '0') * 10 + (s[5] - '0');
 }
 
-static void drv_lte_parse_nmea_rmc(char * s)
+static void parse_nmea_rmc(char * s)
 {
 	struct drv_lte_location current = {0};
 	struct drv_lte_time times = {0};
@@ -410,18 +296,97 @@ static void drv_lte_parse_nmea_rmc(char * s)
 	
 	if (location_valid)
 	{
-		last_location_time = xTaskGetTickCount();
-		last_location = current;
+		drv_lte_data.last_location_time = xTaskGetTickCount();
+		drv_lte_data.last_location = current;
 	}
-	last_time_time = xTaskGetTickCount();
-	last_time = times;
+	drv_lte_data.last_time_time = xTaskGetTickCount();
+	drv_lte_data.last_time = times;
+}
+
+// PUBLIC API
+
+
+void drv_lte_init()
+{
+	drv_lte_data.last_location_time = 0;
+	PORT_REGS->GROUP[LTE_POWER_GROUP].PORT_DIRSET = LTE_POWER_PORT;
+}
+
+
+bool drv_lte_configure(void)
+{
+	const char * response;
+	
+	// Turn module on (if not already on)
+	PORT_REGS->GROUP[LTE_POWER_GROUP].PORT_OUTCLR = LTE_POWER_PORT;
+	vTaskDelay(500);
+	PORT_REGS->GROUP[LTE_POWER_GROUP].PORT_OUTSET = LTE_POWER_PORT;
+	vTaskDelay(1500);
+
+	// Configure communications protocol (disable echo, disable verbose)
+	if (!at_cmd_custom("ATE0V0\r", "0\r", 10)) return false;
+	// disable CME errors (still reported as code=4)
+	if (!at_cmd("AT+CMEE=0\r", 10)) return false;
+
+	// Check whether the GPS is on
+	response = at_cmd_resp("AT+UGPS?\r", 10000);
+	if (!response) return false;
+	if (strstr(response, "+UGPS: 0"))
+	{
+		// Try to power on GPS
+		if (!at_cmd("AT+UGPS=1,0,3\r", 10000)) return false;
+	}
+
+	// Store GPS NMEA RMC strings (contains lat/lon, date/time, etc)
+	if (!at_cmd("AT+UGRMC=1\r", 10000)) return false;
+
+	// Clear stuff
+	//at_cmd_custom("AT+USOCL=0;+USOCL=1;+USOCL=2;+USOCL=3;+USOCL=4;+USOCL=5;+USOCL=6\r", "\r", 10);
+	vTaskDelay(1);
+
+	// Set MQTT parameters
+	at_cmd_custom("AT+UMQTT=0,\"" MQTT_CLIENT_ID "\"\r", "+UMQTT=0,1\r\n0\r", 1000);
+	at_cmd_custom("AT+UMQTT=2,\"" MQTT_HOST "\"," MQTT_PORT "\r", "+UMQTT=2,1\r\n0\r", 1000);
+
+	vTaskDelay(1);
+	
+	return true;
+}
+
+
+bool drv_lte_is_network_registered(void)
+{
+	return sara_check_network_registration();
+}
+
+bool drv_lte_is_logged_in(void)
+{
+	return drv_lte_data.logged_in;
+}
+
+bool drv_lte_mqtt_login(void)
+{
+	const char * response = at_cmd_custom("AT+UMQTTC=1\r", "+UUMQTTC: 1,0", 30000);
+	drv_lte_data.logged_in = response != NULL;
+	return drv_lte_data.logged_in;
+}
+
+bool drv_lte_mqtt_publish(const char *topic, const char *message)
+{
+#if 0
+	if (!sara_publish_topic_message(topic, message))
+		drv_lte_data.logged_in = false;
+	return drv_lte_data.logged_in;
+#else
+	return sara_publish_topic_message(topic, message);
+#endif
 }
 
 const struct drv_lte_location * drv_lte_get_last_location(void)
 {
-	if (last_location_time > 0)
+	if (drv_lte_data.last_location_time > 0)
 	{
-		return &last_location;
+		return &drv_lte_data.last_location;
 	}
 	else
 	{
@@ -431,9 +396,9 @@ const struct drv_lte_location * drv_lte_get_last_location(void)
 
 const struct drv_lte_time * drv_lte_get_last_time(void)
 {
-	if (last_time_time > 0)
+	if (drv_lte_data.last_time_time > 0)
 	{
-		return &last_time;
+		return &drv_lte_data.last_time;
 	}
 	else
 	{
