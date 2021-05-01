@@ -8,6 +8,7 @@
 #include <time.h>
 #include <stdio.h>
 #include "ff.h"
+#include "diskio.h"
 
 #define SYNC_INTERVAL 1000
 #define DELAY_PERIOD 10
@@ -27,6 +28,7 @@ static bool open_file(void)
 	FRESULT fresult;
 	char name[15];
 	app_datalogger_data.file_opened = false;
+	
 	for (i = 1; i < 99999; ++i)
 	{
 		snprintf(name, 15, "log%05d.csv", i);
@@ -84,6 +86,11 @@ static void DataloggerTask(void* n)
 			if (open_file())
 			{
 				f_puts("time,id,data\r\n", &app_datalogger_data.fp);
+			}
+			else
+			{
+				// could not open file, SD card might not be inserted
+				vTaskDelay(100);
 			}
 		}
 		

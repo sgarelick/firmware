@@ -29,18 +29,13 @@ void drv_sd_init(void)
 	drv_sd_data.connected = false;
 	
 	PORT_REGS->GROUP[0].PORT_DIRCLR = SD_CD_PORT;
-	PORT_REGS->GROUP[0].PORT_OUTSET = SD_CD_PORT;
 	PORT_REGS->GROUP[0].PORT_PINCFG[SD_CD_PIN] = PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1);
+	PORT_REGS->GROUP[0].PORT_OUTSET = SD_CD_PORT;
+	asm("nop\r\n");
 }
 
 void drv_sd_periodic(void)
 {
-	// Check for changes in card connection status
-	drv_sd_data.connected = !(PORT_REGS->GROUP[0].PORT_IN >> SD_CD_PIN & 1);
-	if (!drv_sd_data.connected)
-	{
-		drv_sd_data.initialized = false;
-	}
 }
 
 uint8_t send_cmd(int cmd, int arg, uint8_t crc)
@@ -379,7 +374,13 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void* buff)
 DSTATUS disk_status(BYTE pdrv)
 {
 	if (pdrv != 0) return RES_PARERR;
-	
+	// Check for changes in card connection status
+	drv_sd_data.connected = !(PORT_REGS->GROUP[0].PORT_IN >> SD_CD_PIN & 1);
+	if (!drv_sd_data.connected)
+	{
+		drv_sd_data.initialized = false;
+	}
+
 	DSTATUS result = 0;
 	if (!drv_sd_data.connected)
 		result |= STA_NODISK;

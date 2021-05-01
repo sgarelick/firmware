@@ -7,6 +7,7 @@
 #include <drv_divas.h>
 #include "drv_lte.h"
 #include "drv_rtc.h"
+#include <drv_sd.h>
 
 // Warning: this is not running in an RTOS task
 void drv_init(void)
@@ -20,4 +21,5 @@ void drv_init(void)
 	drv_uart_init();
 	drv_rtc_init();
 	drv_lte_init();
+	drv_sd_init();
 }

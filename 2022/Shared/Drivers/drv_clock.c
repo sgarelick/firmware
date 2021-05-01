@@ -35,7 +35,7 @@ void drv_clock_init(void)
 	}
 #	endif
 	SystemCoreClock = OSC48M_FREQUENCY;
-	
+		
 	// Then, bring up the rest of the clocks.
 	for (enum drv_clock_channel channel = (enum drv_clock_channel)0U; channel < DRV_CLOCK_CHANNEL_COUNT; ++channel) {
 		const struct drv_clock_channelConfig * config = &drv_clock_config.channelConfig[channel];
