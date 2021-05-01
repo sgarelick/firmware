@@ -12,6 +12,7 @@
 #include "drv_lte.h"
 #include "drv_can.h"
 #include "pe3.h"
+#include "app_data.h"
 #include "app_datalogger.h"
 
 const uint8_t SevenSegmentASCII[96] = {
@@ -334,11 +335,11 @@ static void read_inputs()
 	app_display_data.miscChanged = (app_display_data.misc != app_display_data.miscPrevious && app_display_data.misc);
 	
 	// Read engine speed
-	const uint8_t * raw_pe01 = app_datalogger_read_double_buffer(DRV_CAN_RX_BUFFER_PE3_PE01);
-	if (raw_pe01)
+	struct app_data_message message;
+	if (app_data_read_buffer(DRV_CAN_RX_BUFFER_PE3_PE01, &message))
 	{
 		struct pe3_pe01_t pe01;
-		pe3_pe01_unpack(&pe01, raw_pe01, 8);
+		pe3_pe01_unpack(&pe01, message.data, 8);
 		if (pe3_pe01_engine_speed_is_in_range(pe01.engine_speed))
 		{
 			app_display_data.rpm = pe01.engine_speed;
@@ -355,7 +356,7 @@ static void read_inputs()
 		strcat(app_display_data.debug, "nO PE01 - ");
 	}
 	
-	bool sb_front1_missing = app_datalogger_is_missing(DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
+	bool sb_front1_missing = app_data_is_missing(DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
 	if (sb_front1_missing)
 	{
 		strcat(app_display_data.debug, "nO SbF1 - ");
@@ -365,17 +366,20 @@ static void read_inputs()
 	{
 		strcat(app_display_data.debug, "LtE nr - ");
 	}
+#if 0 /* fuse indicator broken on PDM Rev0 */
 	bool fuse_blown = app_inputs_get_button(APP_INPUTS_FUSE);
 	if (fuse_blown)
 	{
 		strcat(app_display_data.debug, "FuSE bLOn - ");
 	}
+#endif
+	bool datalogger_bad = !app_datalogger_okay();
 	
 	app_display_data.warnings.bit.daq = sb_front1_missing;
 	app_display_data.warnings.bit.telemetry = lte_missing;
-	app_display_data.warnings.bit.datalogger = true;
-	app_display_data.warnings.bit.fuse = fuse_blown;
-	app_display_data.warnings.bit.coolant = true;
+	app_display_data.warnings.bit.datalogger = datalogger_bad;
+	app_display_data.warnings.bit.fuse = false;
+	app_display_data.warnings.bit.coolant = false;
 	
 	strcat(app_display_data.debug, ".");
 }

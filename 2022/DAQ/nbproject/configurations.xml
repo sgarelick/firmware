@@ -9,6 +9,8 @@
       <itemPath>Applications/app_inputs.h</itemPath>
       <itemPath>Applications/app_datalogger.c</itemPath>
       <itemPath>Applications/app_datalogger.h</itemPath>
+      <itemPath>Applications/app_data.c</itemPath>
+      <itemPath>Applications/app_data.h</itemPath>
     </logicalFolder>
     <logicalFolder name="f1" displayName="Drivers" projectFiles="true">
       <itemPath>Drivers/drv_main.c</itemPath>
