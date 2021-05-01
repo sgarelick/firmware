@@ -16,7 +16,7 @@ void drv_init(void)
 	drv_adc_init();
 	drv_can_init();
 	drv_i2c_init();
-	//drv_spi_init();
+	drv_spi_init();
 	drv_uart_init();
 	drv_rtc_init();
 	drv_lte_init();

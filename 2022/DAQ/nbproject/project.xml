@@ -17,6 +17,7 @@
                 <sourceRootElem>../Shared/Applications</sourceRootElem>
                 <sourceRootElem>../Shared/Drivers</sourceRootElem>
                 <sourceRootElem>.</sourceRootElem>
+                <sourceRootElem>../Shared/fatfs</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>

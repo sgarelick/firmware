@@ -12,8 +12,8 @@
 #include "drv_rtc.h"
 #include <time.h>
 #include <string.h>
-//#include "ff.h"
-//#include "diskio.h"
+#include "ff.h"
+#include "diskio.h"
 #include "drv_i2c.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -193,7 +193,6 @@ int drv_rtc_get_ms(void)
 	return xTaskGetTickCount() - drv_rtc_data.ms_epoch;
 }
 
-#ifdef DWORD
 DWORD get_fattime (void)
 {
 	return ((drv_rtc_data.local.tm_year - 80) << 25) |
@@ -203,7 +202,6 @@ DWORD get_fattime (void)
 			(drv_rtc_data.local.tm_min << 5) |
 			(drv_rtc_data.local.tm_sec / 2);
 }
-#endif
 
 struct tm *localtime (const time_t *_timer)
 {

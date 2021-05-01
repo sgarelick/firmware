@@ -44,6 +44,15 @@
       <itemPath>../Shared/Drivers/drv_divas.h</itemPath>
       <itemPath>Drivers/drv_rtc.c</itemPath>
       <itemPath>Drivers/drv_rtc.h</itemPath>
+      <itemPath>../Shared/Drivers/drv_sd.c</itemPath>
+      <itemPath>../Shared/Drivers/drv_sd.h</itemPath>
+    </logicalFolder>
+    <logicalFolder name="fatfs" displayName="fatfs" projectFiles="true">
+      <logicalFolder name="source" displayName="source" projectFiles="true">
+        <itemPath>../Shared/fatfs/source/ff.c</itemPath>
+        <itemPath>../Shared/fatfs/source/ffsystem.c</itemPath>
+        <itemPath>../Shared/fatfs/source/ffunicode.c</itemPath>
+      </logicalFolder>
     </logicalFolder>
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
@@ -121,6 +130,7 @@
     <Elem>../Shared/Applications</Elem>
     <Elem>../Shared/Drivers</Elem>
     <Elem>.</Elem>
+    <Elem>../Shared/fatfs</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -236,7 +246,7 @@
       <ARM-Global>
         <property key="bin" value="false"/>
         <property key="common-include-directories"
-                  value=".;Applications;Drivers;..\Shared\Drivers;..\Shared\RTOS;..\Shared\RTOS\FreeRTOS\Source\include;..\Shared\RTOS\FreeRTOS\Source\portable\GCC\ARM_CM0"/>
+                  value=".;Applications;Drivers;..\Shared\Drivers;..\Shared\RTOS;..\Shared\RTOS\FreeRTOS\Source\include;..\Shared\RTOS\FreeRTOS\Source\portable\GCC\ARM_CM0;..\Shared\fatfs\source"/>
         <property key="eep" value="false"/>
         <property key="hex" value="true"/>
         <property key="lss" value="true"/>

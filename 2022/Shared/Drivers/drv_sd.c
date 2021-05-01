@@ -10,8 +10,10 @@
 #include "task.h"
 #include <stdbool.h>
 
-#define SD_CD_PORT PORT_PA27
-#define SD_CD_PIN PIN_PA27
+#define SD_CD_PORT PORT_PA20
+#define SD_CD_PIN PIN_PA20
+
+#define SD_CS_PORT PORT_PA10
 
 static struct drv_sd_data {
 	bool initialized;
@@ -27,7 +29,8 @@ void drv_sd_init(void)
 	drv_sd_data.connected = false;
 	
 	PORT_REGS->GROUP[0].PORT_DIRCLR = SD_CD_PORT;
-	PORT_REGS->GROUP[0].PORT_PINCFG[SD_CD_PIN] = PORT_PINCFG_INEN(1);
+	PORT_REGS->GROUP[0].PORT_OUTSET = SD_CD_PORT;
+	PORT_REGS->GROUP[0].PORT_PINCFG[SD_CD_PIN] = PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1);
 }
 
 void drv_sd_periodic(void)
@@ -79,7 +82,7 @@ DSTATUS disk_initialize(BYTE pdrv)
 
 	//SETUP****************************************************************************************
 	//Set CS high during 74+ clock pulses
-	PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA20;
+	PORT_REGS->GROUP[0].PORT_OUTSET = SD_CS_PORT;
 
 	// Sleep for at least 1 ms
 	vTaskDelay(3);
@@ -92,7 +95,7 @@ DSTATUS disk_initialize(BYTE pdrv)
 	}
 
 	// Set CS low and send CMD0 (32 bits of 0) until we receive a nonzero result
-	PORT_REGS->GROUP[0].PORT_OUTCLR = PORT_PA20;
+	PORT_REGS->GROUP[0].PORT_OUTCLR = SD_CS_PORT;
 	uint8_t resp = 0;
 
 	do
