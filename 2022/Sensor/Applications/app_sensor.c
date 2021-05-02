@@ -64,7 +64,7 @@ static void MeasurementTask()
 		drv_hsd_setChannel(currentChannel);
 		
 		// Queue tx
-		buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_CAN0_signals1);
+		buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
 		if (buffer)
 		{
 			signals1 = (struct signals1_layout *)buffer->DB;
@@ -72,9 +72,9 @@ static void MeasurementTask()
 			signals1->analog2 = measurements.analogSensors[1];
 			signals1->analog3 = measurements.analogSensors[2];
 			signals1->analog4 = measurements.analogSensors[3];
-			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_CAN0_signals1);
+			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
 		}
-		buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_CAN0_signals2);
+		buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS2);
 		if (buffer)
 		{
 			signals2 = (struct signals2_layout *)buffer->DB;
@@ -86,7 +86,7 @@ static void MeasurementTask()
 			signals2->fault4 = measurements.individualFaults[DRV_HSD_CHANNEL_SENSOR_456];
 			signals2->allFaults = measurements.totalFaults;
 			signals2->totalCurrent = measurements.totalCurrent;
-			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_CAN0_signals2);
+			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS2);
 		}
 
 		// Wait until next scheduled measurement time

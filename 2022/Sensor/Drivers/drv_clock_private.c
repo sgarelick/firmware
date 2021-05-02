@@ -3,11 +3,8 @@
 const struct drv_clock_config drv_clock_config = {
 	.channelConfig = {
 		[DRV_CLOCK_CHANNEL_MAIN_CPU] = {
-			.generator_id = 0,
-			.genctrl = 0,
-			.source = 6, // input from OSC48M
-			.division_mode = 0,
-			.divisor = 0, // output OSC48M / 1 = 48MHz
+			.genctrl = &GCLK_REGS->GCLK_GENCTRL[0],
+			.reg = GCLK_GENCTRL_GENEN(1) | GCLK_GENCTRL_DIVSEL_DIV1 | GCLK_GENCTRL_DIV(0) | GCLK_GENCTRL_SRC_OSC48M,
 		},
 	},
 };

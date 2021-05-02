@@ -8,8 +8,8 @@ static const struct drv_can_extended_filter extendedFilters[CAN0_EXTENDED_FILTER
 
 // Definitions for each transmit buffer
 static const struct drv_can_tx_buffer_config transmitConfig[DRV_CAN_TX_BUFFER_COUNT] = {
-	DRV_CAN_TX_BUFFER(CAN0, signals1),
-	DRV_CAN_TX_BUFFER(CAN0, signals2),
+	DRV_CAN_TX_BUFFER(VEHICLE, SB_FRONT1_SIGNALS1),
+	DRV_CAN_TX_BUFFER(VEHICLE, SB_FRONT1_SIGNALS2),
 };
 
 const struct drv_can_config drv_can_config = {

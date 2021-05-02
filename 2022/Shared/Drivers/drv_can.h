@@ -251,7 +251,7 @@ void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table
 #define DRV_CAN_TX_BUFFER(BUS, MSG) 	[DRV_CAN_TX_BUFFER_ ## BUS ## _ ## MSG] = { \
 	.TXBE_0 = { \
 		.bit = { \
-			.ID = BUS ## _ ## MSG ## _FRAME_ID, \
+			.ID = (BUS ## _ ## MSG ## _IS_EXTENDED) ? (BUS ## _ ## MSG ## _FRAME_ID) : (BUS ## _ ## MSG ## _FRAME_ID) << 18, \
 			.RTR = 0, \
 			.XTD = BUS ## _ ## MSG ## _IS_EXTENDED, \
 		} \

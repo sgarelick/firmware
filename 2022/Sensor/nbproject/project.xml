@@ -13,11 +13,10 @@
             <sourceEncoding>UTF-8</sourceEncoding>
             <make-dep-projects/>
             <sourceRootList>
-                <sourceRootElem>Applications</sourceRootElem>
-                <sourceRootElem>Drivers</sourceRootElem>
                 <sourceRootElem>../Shared/RTOS</sourceRootElem>
                 <sourceRootElem>../Shared/Applications</sourceRootElem>
                 <sourceRootElem>../Shared/Drivers</sourceRootElem>
+                <sourceRootElem>.</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>

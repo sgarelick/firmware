@@ -92,6 +92,7 @@
                    projectFiles="true">
       <itemPath>startup_samc21j18a.c</itemPath>
       <itemPath>system_samc21j18a.c</itemPath>
+      <itemPath>vehicle.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -100,11 +101,10 @@
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
-    <Elem>Applications</Elem>
-    <Elem>Drivers</Elem>
     <Elem>../Shared/RTOS</Elem>
     <Elem>../Shared/Applications</Elem>
     <Elem>../Shared/Drivers</Elem>
+    <Elem>.</Elem>
   </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
@@ -221,10 +221,10 @@
       <ARM-Global>
         <property key="bin" value="false"/>
         <property key="common-include-directories"
-                  value="Applications;Drivers;..\Shared\Drivers;..\Shared\RTOS;..\Shared\RTOS\FreeRTOS\Source\include;..\Shared\RTOS\FreeRTOS\Source\portable\GCC\ARM_CM0"/>
+                  value="Applications;Drivers;..\Shared\Drivers;..\Shared\RTOS;..\Shared\RTOS\FreeRTOS\Source\include;..\Shared\RTOS\FreeRTOS\Source\portable\GCC\ARM_CM0;."/>
         <property key="eep" value="false"/>
         <property key="hex" value="true"/>
-        <property key="lss" value="false"/>
+        <property key="lss" value="true"/>
         <property key="omit-pack-options" value="false"/>
         <property key="processor-mode" value="-mthumb"/>
         <property key="srec" value="false"/>
