@@ -13,7 +13,7 @@
 #define SYNC_INTERVAL 1000
 #define DELAY_PERIOD 10
 
-
+#define STACK_SIZE 1000
 
 static struct {
 	FATFS fs;
@@ -23,6 +23,8 @@ static struct {
 	TickType_t last_sync;
 	TickType_t last_write;
 	struct servo_config servo_config;
+	StaticTask_t rtos_task_id;
+	StackType_t  rtos_stack[STACK_SIZE];
 } app_datalogger_data = {0};
 
 
@@ -94,8 +96,7 @@ static bool read_data_files(void)
 	return true;
 }
 
-static xTaskHandle DataloggerTaskID;
-static void DataloggerTask(void* n)
+static void app_datalogger_task()
 {
 	TickType_t xLastWakeTime = xTaskGetTickCount();
 	f_mount(&app_datalogger_data.fs, "", 0);
@@ -160,12 +161,17 @@ handle_error:
 
 void app_datalogger_init(void)
 {
-	xTaskCreate(DataloggerTask, "DL", configMINIMAL_STACK_SIZE + 256, NULL, 2, &DataloggerTaskID);
+	xTaskCreateStatic(app_datalogger_task, "DL", STACK_SIZE, NULL, 3, app_datalogger_data.rtos_stack, &app_datalogger_data.rtos_task_id);
 }
 
 bool app_datalogger_okay(void)
 {
 	return app_datalogger_data.file_opened && (xTaskGetTickCount() - app_datalogger_data.last_write) < 1000;
+}
+
+bool app_datalogger_read_data(void)
+{
+	return app_datalogger_data.data_read;
 }
 
 const struct servo_config * app_datalogger_get_servo_positions(void)

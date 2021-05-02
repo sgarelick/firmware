@@ -9,8 +9,6 @@
 
 #define DELAY_PERIOD 50
 
-static xTaskHandle InputsTaskID;
-
 static const struct {
 	struct app_inputs_config_digital {
 		uint8_t group;
@@ -30,6 +28,8 @@ static const struct {
 	},
 };
 
+#define STACK_SIZE 512
+
 static struct app_inputs_data
 {
 	struct drv_adc_results adc_results;
@@ -39,6 +39,8 @@ static struct app_inputs_data
 	struct app_inputs_data_digital {
 		bool active, last;
 	} digital[APP_INPUTS_DIGITAL_COUNT];
+	StaticTask_t rtos_task_id;
+	StackType_t  rtos_stack[STACK_SIZE];
 } app_inputs_data = {0};
 
 int app_inputs_get_dial(enum app_inputs_analog dial)
@@ -68,7 +70,7 @@ static int rotaryPosition(uint16_t counts)
 }
 
 
-static void InputsTask()
+static void app_inputs_task()
 {
 	// Initialize digital inputs
 	for (enum app_inputs_digital channel = (enum app_inputs_digital)0U; channel < APP_INPUTS_DIGITAL_COUNT; ++channel)
@@ -143,5 +145,5 @@ static void InputsTask()
 
 void app_inputs_init(void)
 {
-	xTaskCreate(InputsTask, "INPUT", configMINIMAL_STACK_SIZE + 256, NULL, 1, &InputsTaskID);
+	xTaskCreateStatic(app_inputs_task, "INPUT", STACK_SIZE, NULL, 1, app_inputs_data.rtos_stack, &app_inputs_data.rtos_task_id);
 }

@@ -8,12 +8,17 @@
 #include <stdio.h>
 
 #define DELAY_PERIOD 500
-static struct app_data_message message;
 #define STR_SIZE (DRV_CAN_RX_BUFFER_COUNT * 27 + 1)
-static char str[STR_SIZE];
+#define STACK_SIZE 512
 
-static xTaskHandle TelemetryTaskID;
-static void TelemetryTask(void* n)
+static struct {
+	struct app_data_message message;
+	char str[STR_SIZE];
+	StaticTask_t rtos_task_id;
+	StackType_t  rtos_stack[STACK_SIZE];
+} app_telemetry_data;
+
+static void app_telemetry_task()
 {
 	while (!drv_lte_configure());
 	
@@ -26,23 +31,23 @@ static void TelemetryTask(void* n)
 			int strpos = 0;
 			for (enum drv_can_rx_buffer_table id = (enum drv_can_rx_buffer_table)0U; id < DRV_CAN_RX_BUFFER_COUNT; ++id)
 			{
-				if (app_data_read_buffer(id, &message))
+				if (app_data_read_buffer(id, &app_telemetry_data.message))
 				{
-					strpos += snprintf(str+strpos, STR_SIZE-strpos, "%08lx=%02x%02x%02x%02x%02x%02x%02x%02x ",
-								 message.id,
-								 message.data[0],
-								 message.data[1],
-								 message.data[2],
-								 message.data[3],
-								 message.data[4],
-								 message.data[5],
-								 message.data[6],
-								 message.data[7]);
+					strpos += snprintf(app_telemetry_data.str+strpos, STR_SIZE-strpos, "%08lx=%02x%02x%02x%02x%02x%02x%02x%02x ",
+								 app_telemetry_data.message.id,
+								 app_telemetry_data.message.data[0],
+								 app_telemetry_data.message.data[1],
+								 app_telemetry_data.message.data[2],
+								 app_telemetry_data.message.data[3],
+								 app_telemetry_data.message.data[4],
+								 app_telemetry_data.message.data[5],
+								 app_telemetry_data.message.data[6],
+								 app_telemetry_data.message.data[7]);
 					//if (!drv_lte_mqtt_publish("CAN", str)) break;
 					
 				}
 			}
-			if (strpos>0) drv_lte_mqtt_publish("CAN", str);
+			if (strpos>0) drv_lte_mqtt_publish("CAN", app_telemetry_data.str);
 		}
 		else
 		{
@@ -58,5 +63,5 @@ static void TelemetryTask(void* n)
 
 void app_telemetry_init(void)
 {
-	xTaskCreate(TelemetryTask, "TEL", configMINIMAL_STACK_SIZE + 256, NULL, 2, &TelemetryTaskID);
+	xTaskCreateStatic(app_telemetry_task, "TEL", STACK_SIZE, NULL, 2, app_telemetry_data.rtos_stack, &app_telemetry_data.rtos_task_id);
 }

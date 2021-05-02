@@ -1,5 +1,4 @@
 #include <drv_clock.h>
-#include <drv_adc.h>
 #include <drv_can.h>
 #include <drv_ws2812b.h>
 #include <drv_tcc.h>

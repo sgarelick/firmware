@@ -22,6 +22,7 @@ struct servo_config
 
 void app_datalogger_init(void);
 bool app_datalogger_okay(void);
+bool app_datalogger_read_data(void);
 const struct servo_config * app_datalogger_get_servo_positions(void);
 
 #endif	/* APP_DATALOGGER_H */

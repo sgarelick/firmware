@@ -264,7 +264,6 @@ static void scroll_text(const char *s)
 
 #define INIT_DELAY 200
 
-static xTaskHandle StatusTaskID;
 
 enum display_mode
 {
@@ -277,6 +276,7 @@ enum display_mode
 };
 
 #define DEBUG_LEN 128
+#define STACK_SIZE 768
 
 static struct
 {
@@ -302,6 +302,8 @@ static struct
 		uint8_t reg;
 	} warnings;
 	char debug[DEBUG_LEN];
+	StaticTask_t rtos_task_id;
+	StackType_t  rtos_stack[STACK_SIZE];
 } app_display_data = {0};
 
 static void read_inputs()
@@ -384,7 +386,7 @@ static void read_inputs()
 	strcat(app_display_data.debug, ".");
 }
 
-static void StatusTask()
+static void app_display_task()
 {
 	// Toggle DISPLAY_RESET_L
 	PORT_REGS->GROUP[0].PORT_DIRSET = PORT_PA21;
@@ -419,6 +421,23 @@ static void StatusTask()
 	display_gear('\x7F');
 	vTaskDelay(INIT_DELAY);
 	
+	TickType_t now = xTaskGetTickCount();
+	bool sd_bad, can_bad;
+	do {
+		sd_bad = !app_datalogger_read_data();
+		can_bad = app_data_is_missing(DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
+		vTaskDelayUntil(&now, 10);
+	} while (now < 5000 && (sd_bad));
+	
+	if (sd_bad)
+	{
+		scroll_text("Err Sd CArd");
+	}
+	if (can_bad)
+	{
+		scroll_text("Err CAn dAq");
+	}
+	
 	app_display_data.warnings.reg = 0;
 	int gear = 0;
 	app_display_data.displayMode = DM_TIME;
@@ -429,8 +448,9 @@ static void StatusTask()
 		// Check for changes in dial position and display value if so
 		if (app_display_data.eARBFrontChanged)
 		{
+			const struct servo_config * servos = app_datalogger_get_servo_positions();
 			char s[5] = {0};
-			snprintf(s, 5, "%d", app_display_data.eARBFront);
+			snprintf(s, 5, "%d", servos->eARBFrontPulses[app_display_data.eARBFront-1]);
 			display_gear('F');
 			display_rpm(s, 0);
 			display_shift(0);
@@ -439,8 +459,9 @@ static void StatusTask()
 		}
 		if (app_display_data.eARBRearChanged)
 		{
+			const struct servo_config * servos = app_datalogger_get_servo_positions();
 			char s[5] = {0};
-			snprintf(s, 5, "%d", app_display_data.eARBRear);
+			snprintf(s, 5, "%d", servos->eARBRearPulses[app_display_data.eARBRear-1]);
 			display_gear('R');
 			display_rpm(s, 0);
 			display_shift(0);
@@ -461,6 +482,9 @@ static void StatusTask()
 			case 3:
 				s = "brAkES";
 				break;
+			default:
+				s = "EEEE";
+				break;
 			}
 			scroll_text(s);
 		}
@@ -480,6 +504,9 @@ static void StatusTask()
 				break;
 			case DM_DEBUG:
 				s = "ErrS";
+				break;
+			default:
+				s = "EEEE";
 				break;
 			}
 			scroll_text(s);
@@ -518,7 +545,7 @@ static void StatusTask()
 		if (app_display_data.displayMode == DM_TIME)
 		{
 			struct tm * time = localtime(NULL);
-			char timestr[5];
+			char timestr[20];
 			if (time->tm_sec % 15 < 2)
 			{
 				strftime(timestr, 5, "%Y", time);
@@ -540,7 +567,7 @@ static void StatusTask()
 			else
 			{
 				strftime(timestr, 5, "%S", time);
-				snprintf(timestr + 2, 3, "%02d", drv_rtc_get_ms() / 10);
+				snprintf(timestr + 2, 11, "%02d", drv_rtc_get_ms() / 10);
 				display_rpm(timestr, 0b0010);
 				display_gear('s');
 			}
@@ -561,5 +588,22 @@ static void StatusTask()
 
 void app_display_init(void)
 {
-	xTaskCreate(StatusTask, "STATUS", configMINIMAL_STACK_SIZE + 1000, NULL, 1, &StatusTaskID);
+	xTaskCreateStatic(app_display_task, "STATUS", STACK_SIZE, NULL, 1, app_display_data.rtos_stack, &app_display_data.rtos_task_id);
+}
+
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask,
+								   signed char *pcTaskName)
+{
+	(void)xTask;
+	(void)pcTaskName;
+	display_rpm("-So-", 0);
+	configASSERT(0);
+}
+
+__attribute__((naked))
+void HardFault_Handler(void)
+{
+	display_rpm("-HF-", 0);
+	configASSERT(0);
 }

@@ -14,6 +14,7 @@
 
 
 #define WRITE_QUEUE_SIZE 32
+#define STACK_SIZE 256
 
 // Raw CAN data
 static struct {
@@ -21,6 +22,8 @@ static struct {
 	struct app_data_message write_queue[WRITE_QUEUE_SIZE];
 	volatile int write_queue_wp, write_queue_rp;
 	SemaphoreHandle_t mutex;
+	StaticTask_t rtos_task_id;
+	StackType_t  rtos_stack[STACK_SIZE];
 } app_data_data = {0};
 
 static void copy_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id)
@@ -90,8 +93,7 @@ bool app_data_read_from_queue(struct app_data_message * output)
 	return result;
 }
 
-static xTaskHandle DataTaskID;
-static void DataTask(void* n)
+static void app_data_task()
 {
 	TickType_t xLastWakeTime = xTaskGetTickCount();
 	app_data_data.mutex = xSemaphoreCreateMutex();
@@ -112,5 +114,5 @@ static void DataTask(void* n)
 
 void app_data_init(void)
 {
-	xTaskCreate(DataTask, "DATA", configMINIMAL_STACK_SIZE + 128, NULL, 3, &DataTaskID);
+	xTaskCreateStatic(app_data_task, "DATA", STACK_SIZE, NULL, 4, app_data_data.rtos_stack, &app_data_data.rtos_task_id);
 }
