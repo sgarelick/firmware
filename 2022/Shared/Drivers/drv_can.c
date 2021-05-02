@@ -191,6 +191,13 @@ void drv_can_init(void)
 	CAN1_REGS->CAN_TSCC = CAN_TSCC_TSS_INC;
 #endif
 #if ENABLE_CAN0
+	// disable automatic retransmission. ethan found that it makes things better
+	CAN0_REGS->CAN_CCCR |= CAN_CCCR_DAR(1);
+#endif
+#if ENABLE_CAN1
+	CAN1_REGS->CAN_CCCR |= CAN_CCCR_DAR(1);
+#endif
+#if ENABLE_CAN0
 	// enable interrupts. for now on all received messages
 	CAN0_REGS->CAN_IE = CAN_IE_RF1NE(1) | CAN_IE_RF0NE(1) | CAN_IE_DRXE(1);
 #endif
@@ -214,13 +221,12 @@ void drv_can_init(void)
 	// general filter configuration. accept nonmatching into FIFO 0. reject remote.
 	CAN1_REGS->CAN_GFC = CAN_GFC_ANFS_RXF0 | CAN_GFC_ANFE_RXF0 | CAN_GFC_RRFS(1) | CAN_GFC_RRFE(1);
 #endif
-	
 	// drop out of configuration mode and start
 #if ENABLE_CAN0
-	CAN0_REGS->CAN_CCCR = 0;
+	CAN0_REGS->CAN_CCCR &= ~(CAN_CCCR_INIT(1) | CAN_CCCR_CCE(1));
 #endif
 #if ENABLE_CAN1
-	CAN1_REGS->CAN_CCCR = 0;
+	CAN1_REGS->CAN_CCCR &= ~(CAN_CCCR_INIT(1) | CAN_CCCR_CCE(1));
 #endif
 }
 

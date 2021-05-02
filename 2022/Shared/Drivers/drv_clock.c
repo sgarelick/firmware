@@ -39,11 +39,9 @@ void drv_clock_init(void)
 	// Then, bring up the rest of the clocks.
 	for (enum drv_clock_channel channel = (enum drv_clock_channel)0U; channel < DRV_CLOCK_CHANNEL_COUNT; ++channel) {
 		const struct drv_clock_channelConfig * config = &drv_clock_config.channelConfig[channel];
-		uint32_t target = (config->divisor << 24) | (config->division_mode << 12)
-			|(1 << 8) | config->source;
-		if (*config->genctrl != target)
+		if (*config->genctrl != config->reg)
 		{
-			*config->genctrl = target;
+			*config->genctrl = config->reg;
 			while (GCLK_REGS->GCLK_SYNCBUSY) {}
 		}
 	}

@@ -1,13 +1,11 @@
 #pragma once
+#include "sam.h"
 #include "drv_clock_private.h"
 #include <stdint.h>
 
 struct drv_clock_channelConfig {
-	int generator_id;
-	uint32_t * genctrl;
-	int source;
-	int division_mode;
-	int divisor;
+	__IO  uint32_t * genctrl;
+	uint32_t reg;
 };
 
 struct drv_clock_config {
