@@ -37,11 +37,11 @@ BU_: DAQ SBFront1 SBFront2 SBRear1 SBRear2 SBCG
 
 
 BO_ 11 UI_inputs: 8 DAQ
- SG_ UI_shiftUpCommand : 2|1@1+ (1,0) [0|1] "" Vector__XXX
- SG_ UI_shiftDownCommand : 1|1@1+ (1,0) [0|1] "" Vector__XXX
- SG_ UI_eARBRearSetting : 16|8@1- (1,0) [-128|127] "" Vector__XXX
- SG_ UI_eARBFrontSetting : 8|8@1- (1,0) [-128|127] "" Vector__XXX
- SG_ UI_DRSCommand : 0|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ UI_shiftUpCommand : 1|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ UI_shiftDownCommand : 0|1@1+ (1,0) [0|1] "" Vector__XXX
+ SG_ UI_eARBRearSetting : 16|8@1- (1,0) [-80|80] "deg" Vector__XXX
+ SG_ UI_eARBFrontSetting : 8|8@1- (1,0) [-80|80] "deg" Vector__XXX
+ SG_ UI_DRSCommand : 24|8@1- (1,0) [-80|80] "deg" Vector__XXX
 
 BO_ 1 SBFront1_signals1: 8 SBFront1
  SG_ SBFront1_FRaccelX : 0|16@1+ (1,0) [0|0] ""  DAQ

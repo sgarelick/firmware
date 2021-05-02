@@ -20,6 +20,7 @@ static const struct drv_can_extended_filter extendedFiltersPE3[CAN1_EXTENDED_FIL
 
 // Definitions for each transmit buffer
 static const struct drv_can_tx_buffer_config transmitConfig[DRV_CAN_TX_BUFFER_COUNT] = {
+	DRV_CAN_TX_BUFFER(VEHICLE, UI_INPUTS),
 };
 
 const struct drv_can_config drv_can_config = {

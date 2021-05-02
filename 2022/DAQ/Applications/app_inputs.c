@@ -3,6 +3,11 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "sam.h"
+#include "vehicle.h"
+#include "app_datalogger.h"
+#include "drv_can.h"
+
+#define DELAY_PERIOD 50
 
 static xTaskHandle InputsTaskID;
 
@@ -73,6 +78,8 @@ static void InputsTask()
 		PORT_REGS->GROUP[config->group].PORT_OUTSET = config->port;
 	}
 	
+	TickType_t xLastWakeTime = xTaskGetTickCount();
+	
 	while (1)
 	{
 		// Reading of dials
@@ -111,12 +118,30 @@ static void InputsTask()
 				data->last = reading;
 			}
 		}
-		vTaskDelay(50);
+		
+		// Sending of CAN message
+		struct drv_can_tx_buffer_element * buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_VEHICLE_UI_INPUTS);
+		if (buffer)
+		{
+			const struct servo_config * servos = app_datalogger_get_servo_positions();
+			bool drsOpen = app_inputs_get_button(APP_INPUTS_DRS_L) || app_inputs_get_button(APP_INPUTS_DRS_R);
+			struct vehicle_ui_inputs_t ui_inputs = {
+				.ui_drs_command = (drsOpen) ? servos->drsOpenPulse : servos->drsClosedPulse,
+				.ui_e_arb_front_setting = servos->eARBFrontPulses[app_inputs_get_dial(APP_INPUTS_SW1)-1],
+				.ui_e_arb_rear_setting = servos->eARBRearPulses[app_inputs_get_dial(APP_INPUTS_SW2)-1],
+				.ui_shift_down_command = app_inputs_get_button(APP_INPUTS_SHIFT_DOWN),
+				.ui_shift_up_command = app_inputs_get_button(APP_INPUTS_SHIFT_UP),
+			};
+			vehicle_ui_inputs_pack((uint8_t *)buffer->DB, &ui_inputs, 8);
+			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_VEHICLE_UI_INPUTS);
+		}
+		
+		vTaskDelayUntil(&xLastWakeTime, DELAY_PERIOD);
 	}
 	vTaskDelete(NULL);
 }
 
 void app_inputs_init(void)
 {
-	xTaskCreate(InputsTask, "INPUT", configMINIMAL_STACK_SIZE + 1000, NULL, 1, &InputsTaskID);
+	xTaskCreate(InputsTask, "INPUT", configMINIMAL_STACK_SIZE + 256, NULL, 1, &InputsTaskID);
 }

@@ -13,12 +13,16 @@
 #define SYNC_INTERVAL 1000
 #define DELAY_PERIOD 10
 
+
+
 static struct {
 	FATFS fs;
 	FIL fp;
 	bool file_opened;
+	bool data_read;
 	TickType_t last_sync;
 	TickType_t last_write;
+	struct servo_config servo_config;
 } app_datalogger_data = {0};
 
 
@@ -44,6 +48,50 @@ static bool open_file(void)
 		}
 	}
 	return false;
+}
+
+static bool read_data_files(void)
+{
+	FRESULT fresult;
+	char line[10];
+	int i;
+	
+	// ARB Front
+	fresult = f_open(&app_datalogger_data.fp, "CONTROL/ARBFRONT.TXT", FA_READ);
+	if (fresult != FR_OK) return false;
+	i = 0;
+	while (f_gets(line, sizeof line, &app_datalogger_data.fp) && i < SERVO_POSITIONS) {
+		app_datalogger_data.servo_config.eARBFrontPulses[i++] = atoi(line);
+    }
+	f_close(&app_datalogger_data.fp);
+	if (i < SERVO_POSITIONS) return false;
+
+	// ARB Rear
+	fresult = f_open(&app_datalogger_data.fp, "CONTROL/ARBREAR.TXT", FA_READ);
+	if (fresult != FR_OK) return false;
+	i = 0;
+	while (f_gets(line, sizeof line, &app_datalogger_data.fp) && i < SERVO_POSITIONS) {
+        app_datalogger_data.servo_config.eARBRearPulses[i++] = atoi(line);
+    }
+	f_close(&app_datalogger_data.fp);
+	if (i < SERVO_POSITIONS) return false;
+	
+	// DRS
+	fresult = f_open(&app_datalogger_data.fp, "CONTROL/DRS.TXT", FA_READ);
+	if (fresult != FR_OK) return false;
+	i = 0;
+	if (f_gets(line, sizeof line, &app_datalogger_data.fp)) {
+		app_datalogger_data.servo_config.drsClosedPulse = atoi(line); i++;
+		if (f_gets(line, sizeof line, &app_datalogger_data.fp)) {
+			app_datalogger_data.servo_config.drsOpenPulse = atoi(line); i++;
+		}
+	}
+	f_close(&app_datalogger_data.fp);
+	if (i < 2) return false;
+
+	
+	app_datalogger_data.data_read = true;
+	return true;
 }
 
 static xTaskHandle DataloggerTaskID;
@@ -83,11 +131,18 @@ static void DataloggerTask(void* n)
 		}
 		else
 		{
-			if (open_file())
+			bool result;
+			if (! app_datalogger_data.data_read)
 			{
-				f_puts("time,id,data\r\n", &app_datalogger_data.fp);
+				result = read_data_files();
 			}
 			else
+			{
+				result = open_file();
+				if (result)
+					f_puts("time,id,data\r\n", &app_datalogger_data.fp);
+			}
+			if (!result)
 			{
 				// could not open file, SD card might not be inserted
 				vTaskDelay(100);
@@ -105,10 +160,15 @@ handle_error:
 
 void app_datalogger_init(void)
 {
-	xTaskCreate(DataloggerTask, "DL", configMINIMAL_STACK_SIZE + 128, NULL, 2, &DataloggerTaskID);
+	xTaskCreate(DataloggerTask, "DL", configMINIMAL_STACK_SIZE + 256, NULL, 2, &DataloggerTaskID);
 }
 
 bool app_datalogger_okay(void)
 {
 	return app_datalogger_data.file_opened && (xTaskGetTickCount() - app_datalogger_data.last_write) < 1000;
+}
+
+const struct servo_config * app_datalogger_get_servo_positions(void)
+{
+	return &app_datalogger_data.servo_config;
 }

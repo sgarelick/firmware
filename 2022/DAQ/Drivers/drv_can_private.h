@@ -62,6 +62,8 @@ enum drv_can_rx_buffer_table {
 
 // Send two messages with sensor signal information
 enum drv_can_tx_buffer_table {
+	DRV_CAN_TX_BUFFER_VEHICLE_UI_INPUTS,
+	
 	DRV_CAN_TX_BUFFER_COUNT
 };
 
