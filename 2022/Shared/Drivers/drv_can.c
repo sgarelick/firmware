@@ -1,5 +1,6 @@
 #include "drv_can.h"
 #include "sam.h"
+#include <string.h>
 
 #if ENABLE_CAN0
 static struct drv_can_standard_filter can0_standard_filters[CAN0_STANDARD_FILTERS_NUM];
@@ -184,11 +185,11 @@ void drv_can_init(void)
 		//CAN0_REGS->CAN_NBTP = ...;
 #if ENABLE_CAN0
 	// enable timestamping. we should reset TSCV every ms so we know correct microsecond timing or something like that
-	CAN0_REGS->CAN_TSCC = CAN_TSCC_TSS_INC;
+	CAN0_REGS->CAN_TSCC = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);
 #endif
 #if ENABLE_CAN1
 	// enable timestamping. we should reset TSCV every ms so we know correct microsecond timing or something like that
-	CAN1_REGS->CAN_TSCC = CAN_TSCC_TSS_INC;
+	CAN1_REGS->CAN_TSCC = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);
 #endif
 #if ENABLE_CAN0
 	// disable automatic retransmission. ethan found that it makes things better
@@ -309,4 +310,48 @@ void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table
 			bus->CAN_NDAT2 = (1 << (id - 32));
 		}
 	}
+}
+
+bool drv_can_pop_fifo_0(can_registers_t * bus, struct drv_can_rx_fifo_0_element * output)
+{
+	uint32_t rxf0s = bus->CAN_RXF0S;
+	uint32_t f0gi = (rxf0s & CAN_RXF0S_F0GI_Msk) >> CAN_RXF0S_F0GI_Pos;
+	uint32_t f0pi = (rxf0s & CAN_RXF0S_F0PI_Msk) >> CAN_RXF0S_F0PI_Pos;
+	bool f0f = (rxf0s & CAN_RXF0S_F0F_Msk) >> CAN_RXF0S_F0F_Pos;
+	uint32_t f0fl = (rxf0s & CAN_RXF0S_F0FL_Msk) >> CAN_RXF0S_F0FL_Pos;
+	if (f0f)
+	{
+		f0gi = (f0gi + 2) % f0fl;
+	}
+	if (f0gi != f0pi)
+	{
+		if (bus == CAN0_REGS)
+		{
+			memcpy(output, &can0_rx_fifo_0[f0gi], sizeof(struct drv_can_rx_fifo_0_element));
+		}
+		else
+		{
+			memcpy(output, &can1_rx_fifo_0[f0gi], sizeof(struct drv_can_rx_fifo_0_element));
+		}
+		bus->CAN_RXF0A = CAN_RXF0A_F0AI(f0gi);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void drv_can_nuke_fifo_0(can_registers_t * bus)
+{
+	uint32_t rxf0s = bus->CAN_RXF0S;
+	uint32_t f0gi = (rxf0s & CAN_RXF0S_F0GI_Msk) >> CAN_RXF0S_F0GI_Pos;
+	uint32_t f0pi = (rxf0s & CAN_RXF0S_F0PI_Msk) >> CAN_RXF0S_F0PI_Pos;
+	uint32_t new = (f0pi - 1) & 0x1F;
+	bus->CAN_RXF0A = CAN_RXF0A_F0AI(new);
+}
+
+void drv_can_reset_timestamp(can_registers_t * bus)
+{
+	*((__IO  uint32_t *)&bus->CAN_TSCV) = 0;
 }

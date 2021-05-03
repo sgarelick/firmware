@@ -18,10 +18,10 @@
 #define CAN1_RX_PIN PIN_PB11
 #define CAN1_RX_MUX MUX_PB11G_CAN1_RX
 
-#define CAN0_RX_FIFO_0_NUM 0 /* receive FIFO, used for messages not matched by a filter into a buffer */
+#define CAN0_RX_FIFO_0_NUM 64 /* receive FIFO, used for messages not matched by a filter into a buffer */
 #define CAN0_RX_FIFO_0_OPERATION_MODE 1 /* 1: overwrite mode */
 #define CAN0_RX_FIFO_0_HIGH_WATER_INT_LEVEL 0 /* 0: interrupt disabled */
-#define CAN1_RX_FIFO_0_NUM 0 /* receive FIFO, used for messages not matched by a filter into a buffer */
+#define CAN1_RX_FIFO_0_NUM 64 /* receive FIFO, used for messages not matched by a filter into a buffer */
 #define CAN1_RX_FIFO_0_OPERATION_MODE 1 /* 1: overwrite mode */
 #define CAN1_RX_FIFO_0_HIGH_WATER_INT_LEVEL 0 /* 0: interrupt disabled */
 #define CAN_RX_FIFO_0_DATA_SIZE CAN_RXESC_F0DS_DATA8_Val /* >8 if CAN_FD */
@@ -37,30 +37,12 @@
 #define CAN_RX_BUFFERS_DATA_SIZE CAN_RXESC_F1DS_DATA8_Val /* >8 if CAN_FD */
 #define CAN_TX_DATA_SIZE CAN_TXESC_TBDS_DATA8_Val
 
-// No CAN messages to receive for now
+// Receive everything in FIFO
 enum drv_can_rx_buffer_table {		
-	DRV_CAN_RX_BUFFER_PE3_PE01,
-//	DRV_CAN_RX_BUFFER_PE3_PE02,
-//	DRV_CAN_RX_BUFFER_PE3_PE03,
-//	DRV_CAN_RX_BUFFER_PE3_PE04,
-//	DRV_CAN_RX_BUFFER_PE3_PE05,
-//	DRV_CAN_RX_BUFFER_PE3_PE06,
-//	DRV_CAN_RX_BUFFER_PE3_PE07,
-//	DRV_CAN_RX_BUFFER_PE3_PE08,
-//	DRV_CAN_RX_BUFFER_PE3_PE09,
-//	DRV_CAN_RX_BUFFER_PE3_PE10,
-//	DRV_CAN_RX_BUFFER_PE3_PE11,
-//	DRV_CAN_RX_BUFFER_PE3_PE12,
-//	DRV_CAN_RX_BUFFER_PE3_PE13,
-//	DRV_CAN_RX_BUFFER_PE3_PE14,
-//	DRV_CAN_RX_BUFFER_PE3_PE15,
-//	DRV_CAN_RX_BUFFER_PE3_PE16,
-	DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1,
-	DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS2,
 	DRV_CAN_RX_BUFFER_COUNT
 };
 
-// Send two messages with sensor signal information
+// Send control signals
 enum drv_can_tx_buffer_table {
 	DRV_CAN_TX_BUFFER_VEHICLE_UI_INPUTS,
 	

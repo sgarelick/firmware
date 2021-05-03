@@ -8,7 +8,9 @@
 #include <stdio.h>
 
 #define DELAY_PERIOD 500
-#define STR_SIZE (DRV_CAN_RX_BUFFER_COUNT * 27 + 1)
+#define PACKET_SIZE 27
+#define PACKETS_PER_MESSAGE 10
+#define STR_SIZE (PACKETS_PER_MESSAGE * PACKET_SIZE + 1)
 #define STACK_SIZE 512
 
 static struct {
@@ -29,23 +31,31 @@ static void app_telemetry_task()
 		{
 			// send data
 			int strpos = 0;
-			for (enum drv_can_rx_buffer_table id = (enum drv_can_rx_buffer_table)0U; id < DRV_CAN_RX_BUFFER_COUNT; ++id)
+			int i = 0;
+			while (app_data_read_buffer(i++, &app_telemetry_data.message))
 			{
-				if (app_data_read_buffer(id, &app_telemetry_data.message))
+				if ((xLastWakeTime - app_telemetry_data.message.timestamp_ms) > DELAY_PERIOD)
 				{
-					strpos += snprintf(app_telemetry_data.str+strpos, STR_SIZE-strpos, "%08lx=%02x%02x%02x%02x%02x%02x%02x%02x ",
-								 app_telemetry_data.message.id,
-								 app_telemetry_data.message.data[0],
-								 app_telemetry_data.message.data[1],
-								 app_telemetry_data.message.data[2],
-								 app_telemetry_data.message.data[3],
-								 app_telemetry_data.message.data[4],
-								 app_telemetry_data.message.data[5],
-								 app_telemetry_data.message.data[6],
-								 app_telemetry_data.message.data[7]);
-					//if (!drv_lte_mqtt_publish("CAN", str)) break;
-					
+					// stale message
+					continue;
 				}
+				strpos += snprintf(app_telemetry_data.str+strpos, STR_SIZE-strpos, "%08x=%02x%02x%02x%02x%02x%02x%02x%02x ",
+							 (unsigned int)app_telemetry_data.message.id,
+							 app_telemetry_data.message.data[0],
+							 app_telemetry_data.message.data[1],
+							 app_telemetry_data.message.data[2],
+							 app_telemetry_data.message.data[3],
+							 app_telemetry_data.message.data[4],
+							 app_telemetry_data.message.data[5],
+							 app_telemetry_data.message.data[6],
+							 app_telemetry_data.message.data[7]);
+				if (STR_SIZE - strpos - 1 <= PACKET_SIZE)
+				{
+					// out of space, break into multiple transmissions
+					drv_lte_mqtt_publish("CAN", app_telemetry_data.str);
+					strpos = 0;
+				}
+
 			}
 			if (strpos>0) drv_lte_mqtt_publish("CAN", app_telemetry_data.str);
 		}

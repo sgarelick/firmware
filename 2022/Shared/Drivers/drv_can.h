@@ -223,6 +223,9 @@ void drv_can_queue_tx_buffer(can_registers_t * bus, enum drv_can_tx_buffer_table
 bool drv_can_check_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id);
 void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id);
 
+bool drv_can_pop_fifo_0(can_registers_t * bus, struct drv_can_rx_fifo_0_element * output);
+void drv_can_reset_timestamp(can_registers_t * bus);
+
 #define DRV_CAN_STD_FILTER(BUS, MSG) { \
 	.SIDFE_0 = { \
 		.bit = { \

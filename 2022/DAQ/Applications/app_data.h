@@ -13,17 +13,19 @@
 #include "drv_can.h"
 #include "FreeRTOS.h"
 
+
 struct app_data_message {
-	uint32_t id;
+	int id;
 	TickType_t timestamp_ms;
 	uint8_t data[8];
 };
 
 void app_data_init(void);
 
-bool app_data_is_missing(enum drv_can_rx_buffer_table id);
-bool app_data_read_buffer(enum drv_can_rx_buffer_table id, struct app_data_message * output);
-bool app_data_read_from_queue(struct app_data_message * output);
+bool app_data_is_missing(int frame_id);
+bool app_data_read_message(int frame_id, struct app_data_message * output);
+const struct app_data_message * app_data_pop_fifo(void);
+bool app_data_read_buffer(int i, struct app_data_message * output);
 
 
 #endif	/* APP_DATA_H */

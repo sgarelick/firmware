@@ -14,105 +14,113 @@
 
 
 #define WRITE_QUEUE_SIZE 32
-#define STACK_SIZE 256
+#define MESSAGE_BUFFER_SIZE 32
 
 // Raw CAN data
 static struct {
-	struct app_data_message buffer[DRV_CAN_RX_BUFFER_COUNT];
-	struct app_data_message write_queue[WRITE_QUEUE_SIZE];
-	volatile int write_queue_wp, write_queue_rp;
-	SemaphoreHandle_t mutex;
-	StaticTask_t rtos_task_id;
-	StackType_t  rtos_stack[STACK_SIZE];
+	struct app_data_message buffer[MESSAGE_BUFFER_SIZE];
+	struct drv_can_rx_fifo_0_element fifo_tmp;
+	TickType_t tscv_epoch;
 } app_data_data = {0};
 
-static void copy_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table id)
+
+static inline bool is_missing(int i)
 {
-	if (drv_can_check_rx_buffer(bus, id))
+	return (xTaskGetTickCount() - app_data_data.buffer[i].timestamp_ms) > MISSING_FOR;
+}
+
+bool app_data_is_missing(int frame_id)
+{
+	for (int i = 0; i < MESSAGE_BUFFER_SIZE && app_data_data.buffer[i].id != 0; ++i)
 	{
-		const struct drv_can_rx_buffer_element * buf = drv_can_get_rx_buffer(id);
-		app_data_data.buffer[id].id = buf->RXBE_0.bit.ID;
-		app_data_data.buffer[id].timestamp_ms = xTaskGetTickCount();
-		memcpy(app_data_data.buffer[id].data, (const uint8_t *)buf->DB, 8); // not really volatile, protected by NDAT1
-		
-		// add to write queue
-		if ((app_data_data.write_queue_rp + 1) % WRITE_QUEUE_SIZE != app_data_data.write_queue_wp)
+		if (app_data_data.buffer[i].id == frame_id)
 		{
-			app_data_data.write_queue[app_data_data.write_queue_wp].id = buf->RXBE_0.bit.ID;
-			app_data_data.write_queue[app_data_data.write_queue_wp].timestamp_ms = xTaskGetTickCount();
-			memcpy(app_data_data.write_queue[app_data_data.write_queue_wp].data, (const uint8_t *)buf->DB, 8);
-			
-			app_data_data.write_queue_wp = (app_data_data.write_queue_wp + 1) % WRITE_QUEUE_SIZE;
+			return is_missing(i);
 		}
-		
-		drv_can_clear_rx_buffer(bus, id);
 	}
+	return true;
 }
 
-bool app_data_is_missing(enum drv_can_rx_buffer_table id)
+bool app_data_read_message(int frame_id, struct app_data_message * output)
 {
-	bool result = false;
-	if (xSemaphoreTake(app_data_data.mutex, 1))
+	for (int i = 0; i < MESSAGE_BUFFER_SIZE && app_data_data.buffer[i].id != 0; ++i)
 	{
-		result = (xTaskGetTickCount() - app_data_data.buffer[id].timestamp_ms) > MISSING_FOR;
-		
-		xSemaphoreGive(app_data_data.mutex);
-	}
-	return result;
-}
-
-bool app_data_read_buffer(enum drv_can_rx_buffer_table id, struct app_data_message * output)
-{
-	bool result = false;
-	if (xSemaphoreTake(app_data_data.mutex, 1))
-	{
-		memcpy(output, &app_data_data.buffer[id], sizeof(struct app_data_message));
-		result = (xTaskGetTickCount() - app_data_data.buffer[id].timestamp_ms) <= MISSING_FOR;
-		
-		xSemaphoreGive(app_data_data.mutex);
-	}
-	
-	return result;
-}
-
-bool app_data_read_from_queue(struct app_data_message * output)
-{
-	bool result = false;
-	//if (xSemaphoreTake(app_data_data.mutex, 1))
-	{
-		if (app_data_data.write_queue_rp != app_data_data.write_queue_wp)
+		if (app_data_data.buffer[i].id == frame_id)
 		{
-			// Copy output and advance RP
-			memcpy(output, &app_data_data.write_queue[app_data_data.write_queue_rp], sizeof(struct app_data_message));
-			app_data_data.write_queue_rp = (app_data_data.write_queue_rp + 1) % WRITE_QUEUE_SIZE;
-			result = true;
+			if (is_missing(i))
+			{
+				return false;
+			}
+			else
+			{
+				memcpy(output, &app_data_data.buffer[i], sizeof(struct app_data_message));
+				return true;
+			}
 		}
-		//xSemaphoreGive(app_data_data.mutex);
 	}
-	
-	return result;
+	return false;
 }
 
-static void app_data_task()
+bool app_data_read_buffer(int i, struct app_data_message * output)
 {
-	TickType_t xLastWakeTime = xTaskGetTickCount();
-	app_data_data.mutex = xSemaphoreCreateMutex();
-	while (1)
+	if (i < MESSAGE_BUFFER_SIZE && app_data_data.buffer[i].id != 0)
 	{
-		if (xSemaphoreTake(app_data_data.mutex, DELAY_PERIOD))
-		{
-			copy_buffer(CAN0_REGS, DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
-			copy_buffer(CAN0_REGS, DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS2);
-			
-			xSemaphoreGive(app_data_data.mutex);
-		}
-		
-		vTaskDelayUntil(&xLastWakeTime, DELAY_PERIOD);
+		memcpy(output, &app_data_data.buffer[i], sizeof(struct app_data_message));
+		return true;
 	}
-	vTaskDelete(NULL);
+	return false;
 }
 
-void app_data_init(void)
+static inline const struct app_data_message * insert_into_buffer()
 {
-	xTaskCreateStatic(app_data_task, "DATA", STACK_SIZE, NULL, 4, app_data_data.rtos_stack, &app_data_data.rtos_task_id);
+	uint32_t id = app_data_data.fifo_tmp.RXF0E_0.bit.ID;
+	if (!app_data_data.fifo_tmp.RXF0E_0.bit.XTD)
+		id = (id >> 18) & 0x7FF;
+	for (int i = 0; i < MESSAGE_BUFFER_SIZE; ++i)
+	{
+		if (app_data_data.buffer[i].id == id || app_data_data.buffer[i].id == 0)
+		{
+			app_data_data.buffer[i].id = id;
+			if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 2000)
+			{
+				// Get highly accurate tick count
+				app_data_data.buffer[i].timestamp_ms = app_data_data.tscv_epoch + (app_data_data.fifo_tmp.RXF0E_1.bit.RXTS * 4 / 125);
+			}
+			else
+			{
+				// No hope
+				app_data_data.buffer[i].timestamp_ms = xTaskGetTickCount();
+			}
+			memcpy(app_data_data.buffer[i].data, (const uint8_t *)app_data_data.fifo_tmp.DB, 8);
+			return &app_data_data.buffer[i];
+		}
+	}
+	return NULL;
+}
+
+static inline void reset_tscv_epoch(void)
+{
+	if (xTaskGetTickCount() - app_data_data.tscv_epoch > 1000)
+	{
+		drv_can_reset_timestamp(CAN0_REGS);
+		drv_can_reset_timestamp(CAN1_REGS);
+		app_data_data.tscv_epoch = xTaskGetTickCount();
+	}
+}
+const struct app_data_message * app_data_pop_fifo(void)
+{
+	const struct app_data_message * result;
+	if (drv_can_pop_fifo_0(CAN0_REGS, &app_data_data.fifo_tmp))
+	{
+		if ((result = insert_into_buffer()) != NULL)
+			return result;
+	}
+	if (drv_can_pop_fifo_0(CAN1_REGS, &app_data_data.fifo_tmp))
+	{
+		if ((result = insert_into_buffer()) != NULL)
+			return result;
+	}
+	// No messages to read, might as well clean up
+	reset_tscv_epoch();
+	return NULL;
 }

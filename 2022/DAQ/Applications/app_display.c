@@ -338,7 +338,7 @@ static void read_inputs()
 	
 	// Read engine speed
 	struct app_data_message message;
-	if (app_data_read_buffer(DRV_CAN_RX_BUFFER_PE3_PE01, &message))
+	if (app_data_read_message(PE3_PE01_FRAME_ID, &message))
 	{
 		struct pe3_pe01_t pe01;
 		pe3_pe01_unpack(&pe01, message.data, 8);
@@ -358,7 +358,7 @@ static void read_inputs()
 		strcat(app_display_data.debug, "nO PE01 - ");
 	}
 	
-	bool sb_front1_missing = app_data_is_missing(DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
+	bool sb_front1_missing = app_data_is_missing(VEHICLE_SB_FRONT1_SIGNALS1_FRAME_ID);
 	if (sb_front1_missing)
 	{
 		strcat(app_display_data.debug, "nO SbF1 - ");
@@ -425,7 +425,7 @@ static void app_display_task()
 	bool sd_bad, can_bad;
 	do {
 		sd_bad = !app_datalogger_read_data();
-		can_bad = app_data_is_missing(DRV_CAN_RX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1);
+		can_bad = app_data_is_missing(VEHICLE_SB_FRONT1_SIGNALS1_FRAME_ID);
 		vTaskDelayUntil(&now, 10);
 	} while (now < 5000 && (sd_bad));
 	

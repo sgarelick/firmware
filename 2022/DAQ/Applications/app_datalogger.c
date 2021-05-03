@@ -111,21 +111,21 @@ static void app_datalogger_task()
 			}
 			
 			int fres = 0;
-			struct app_data_message message;
-			while (app_data_read_from_queue(&message))
+			const struct app_data_message * message;
+			while ((message = app_data_pop_fifo()) != NULL)
 			{
 				// write a message
 				fres = f_printf(&app_datalogger_data.fp, "%08d,%08x,%02x%02x%02x%02x%02x%02x%02x%02x\r\n",
-							 message.timestamp_ms,
-							 message.id,
-							 message.data[0],
-							 message.data[1],
-							 message.data[2],
-							 message.data[3],
-							 message.data[4],
-							 message.data[5],
-							 message.data[6],
-							 message.data[7]);
+							 message->timestamp_ms,
+							 message->id,
+							 message->data[0],
+							 message->data[1],
+							 message->data[2],
+							 message->data[3],
+							 message->data[4],
+							 message->data[5],
+							 message->data[6],
+							 message->data[7]);
 				if (fres < 0) goto handle_error;
 				app_datalogger_data.last_write = xLastWakeTime;
 			}
