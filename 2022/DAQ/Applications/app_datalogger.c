@@ -104,17 +104,21 @@ static void app_datalogger_task()
 	{	
 		if (app_datalogger_data.file_opened)
 		{
+			// We are in data logging mode
+			
 			if ((xLastWakeTime - app_datalogger_data.last_sync) > SYNC_INTERVAL)
 			{
+				// Force writing out of data to the SD card periodically, to prevent loss
 				app_datalogger_data.last_sync = xLastWakeTime;
 				if (f_sync(&app_datalogger_data.fp) != FR_OK) goto handle_error;
 			}
 			
+			// Keep reading messages from the FIFO
 			int fres = 0;
 			const struct app_data_message * message;
 			while ((message = app_data_pop_fifo()) != NULL)
 			{
-				// write a message
+				// Format and write to file
 				fres = f_printf(&app_datalogger_data.fp, "%08d,%08x,%02x%02x%02x%02x%02x%02x%02x%02x\r\n",
 							 message->timestamp_ms,
 							 message->id,
@@ -132,13 +136,16 @@ static void app_datalogger_task()
 		}
 		else
 		{
+			// We have not yet transitioned to data logging mode
 			bool result;
 			if (! app_datalogger_data.data_read)
 			{
+				// First, try to read the CONTROL files
 				result = read_data_files();
 			}
 			else
 			{
+				// Second, try to open a data logging file
 				result = open_file();
 				if (result)
 					f_puts("time,id,data\r\n", &app_datalogger_data.fp);
@@ -146,7 +153,13 @@ static void app_datalogger_task()
 			if (!result)
 			{
 				// could not open file, SD card might not be inserted
-				vTaskDelay(100);
+				// wait 100ms before trying again
+				while (xTaskGetTickCount() - xLastWakeTime < 100)
+				{
+					// but keep pulling messages through the FIFO. this is necessary to update display
+					while (app_data_pop_fifo() != NULL);
+					vTaskDelay(10);
+				}
 			}
 		}
 		
