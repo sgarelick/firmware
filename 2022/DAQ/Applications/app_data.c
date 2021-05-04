@@ -20,7 +20,7 @@
 static struct {
 	struct app_data_message buffer[MESSAGE_BUFFER_SIZE];
 	struct drv_can_rx_fifo_0_element fifo_tmp;
-	TickType_t tscv_epoch;
+	TickType_t tscv_epoch, prev_epoch, last_read;
 } app_data_data = {0};
 
 
@@ -71,9 +71,14 @@ bool app_data_read_buffer(int i, struct app_data_message * output)
 	return false;
 }
 
-static inline const struct app_data_message * insert_into_buffer()
+static inline int rxts_to_ms()
 {
-	uint32_t id = app_data_data.fifo_tmp.RXF0E_0.bit.ID;
+	return (app_data_data.fifo_tmp.RXF0E_1.bit.RXTS * 4 / 125);
+}
+
+static const struct app_data_message * insert_into_buffer()
+{
+	int id = app_data_data.fifo_tmp.RXF0E_0.bit.ID;
 	if (!app_data_data.fifo_tmp.RXF0E_0.bit.XTD)
 		id = (id >> 18) & 0x7FF;
 	for (int i = 0; i < MESSAGE_BUFFER_SIZE; ++i)
@@ -81,16 +86,27 @@ static inline const struct app_data_message * insert_into_buffer()
 		if (app_data_data.buffer[i].id == id || app_data_data.buffer[i].id == 0)
 		{
 			app_data_data.buffer[i].id = id;
-			if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 2000)
+			if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 500)
 			{
 				// Get highly accurate tick count
-				app_data_data.buffer[i].timestamp_ms = app_data_data.tscv_epoch + (app_data_data.fifo_tmp.RXF0E_1.bit.RXTS * 4 / 125);
+				app_data_data.buffer[i].timestamp_ms = app_data_data.tscv_epoch + rxts_to_ms();
+			}
+			else if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 2000)
+			{
+				// Was probably captured with the previous epoch
+				app_data_data.buffer[i].timestamp_ms = app_data_data.prev_epoch + rxts_to_ms();
 			}
 			else
 			{
 				// No hope
 				app_data_data.buffer[i].timestamp_ms = xTaskGetTickCount();
 			}
+			if (app_data_data.buffer[i].timestamp_ms < app_data_data.last_read)
+			{
+				// We want the timestamps to be monotonically increasing, there's a slight bug with RXTS when its reset
+				app_data_data.buffer[i].timestamp_ms = app_data_data.last_read;
+			}
+			app_data_data.last_read = app_data_data.buffer[i].timestamp_ms;
 			memcpy(app_data_data.buffer[i].data, (const uint8_t *)app_data_data.fifo_tmp.DB, 8);
 			return &app_data_data.buffer[i];
 		}
@@ -100,10 +116,12 @@ static inline const struct app_data_message * insert_into_buffer()
 
 static inline void reset_tscv_epoch(void)
 {
+	// Don't reset more often than once a second
 	if (xTaskGetTickCount() - app_data_data.tscv_epoch > 1000)
 	{
 		drv_can_reset_timestamp(CAN0_REGS);
 		drv_can_reset_timestamp(CAN1_REGS);
+		app_data_data.prev_epoch = app_data_data.tscv_epoch;
 		app_data_data.tscv_epoch = xTaskGetTickCount();
 	}
 }

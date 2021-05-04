@@ -12,8 +12,8 @@
 
 #define SYNC_INTERVAL 1000
 #define DELAY_PERIOD 10
-
 #define STACK_SIZE 1000
+#define APP_DATALOGGER_PRIORITY 2
 
 static struct {
 	FATFS fs;
@@ -25,7 +25,18 @@ static struct {
 	struct servo_config servo_config;
 	StaticTask_t rtos_task_id;
 	StackType_t  rtos_stack[STACK_SIZE];
-} app_datalogger_data = {0};
+} app_datalogger_data = {
+	.servo_config = {
+		.eARBFrontPulses = {
+			-128, -128, -128, -128, -128, -128, -128, -128, -128, -128, -128, -128, 
+		},
+		.eARBRearPulses = {
+			-128, -128, -128, -128, -128, -128, -128, -128, -128, -128, -128, -128, 
+		},
+		.drsClosedPulse = -128,
+		.drsOpenPulse = -128,
+	}
+};
 
 
 static bool open_file(void)
@@ -174,7 +185,7 @@ handle_error:
 
 void app_datalogger_init(void)
 {
-	xTaskCreateStatic(app_datalogger_task, "DL", STACK_SIZE, NULL, 3, app_datalogger_data.rtos_stack, &app_datalogger_data.rtos_task_id);
+	xTaskCreateStatic(app_datalogger_task, "DL", STACK_SIZE, NULL, APP_DATALOGGER_PRIORITY, app_datalogger_data.rtos_stack, &app_datalogger_data.rtos_task_id);
 }
 
 bool app_datalogger_okay(void)

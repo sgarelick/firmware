@@ -12,6 +12,7 @@
 #define PACKETS_PER_MESSAGE 10
 #define STR_SIZE (PACKETS_PER_MESSAGE * PACKET_SIZE + 1)
 #define STACK_SIZE 512
+#define APP_TELEMETRY_PRIORITY 1
 
 static struct {
 	struct app_data_message message;
@@ -73,5 +74,5 @@ static void app_telemetry_task()
 
 void app_telemetry_init(void)
 {
-	xTaskCreateStatic(app_telemetry_task, "TEL", STACK_SIZE, NULL, 2, app_telemetry_data.rtos_stack, &app_telemetry_data.rtos_task_id);
+	xTaskCreateStatic(app_telemetry_task, "TEL", STACK_SIZE, NULL, APP_TELEMETRY_PRIORITY, app_telemetry_data.rtos_stack, &app_telemetry_data.rtos_task_id);
 }

@@ -8,6 +8,7 @@
 #include "drv_can.h"
 
 #define DELAY_PERIOD 50
+#define APP_INPUTS_PRIORITY 4
 
 static const struct {
 	struct app_inputs_config_digital {
@@ -145,5 +146,5 @@ static void app_inputs_task()
 
 void app_inputs_init(void)
 {
-	xTaskCreateStatic(app_inputs_task, "INPUT", STACK_SIZE, NULL, 1, app_inputs_data.rtos_stack, &app_inputs_data.rtos_task_id);
+	xTaskCreateStatic(app_inputs_task, "INPUT", STACK_SIZE, NULL, APP_INPUTS_PRIORITY, app_inputs_data.rtos_stack, &app_inputs_data.rtos_task_id);
 }
