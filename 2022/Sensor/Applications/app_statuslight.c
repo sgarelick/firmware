@@ -7,6 +7,7 @@
 
 static const uint8_t red[3] = {0, 255, 0};
 static const uint8_t green[3] = {255, 0, 0};
+static const uint8_t purple[3] = {0, 255, 255};
 static const uint8_t off[3] = {0, 0, 0};
 
 
@@ -62,4 +63,28 @@ static void StatusTask()
 void app_statuslight_init(void)
 {
 	xTaskCreate(StatusTask, "STATUS", configMINIMAL_STACK_SIZE + 1000, NULL, 1, &StatusTaskID);
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask,
+								   signed char *pcTaskName)
+{
+	(void)xTask;
+	(void)pcTaskName;
+	while (1)
+	{
+		drv_ws2812b_transmit(DRV_WS2812B_CHANNEL_STATUS_LED, purple, 3);
+		for (int i = 0; i < (48000000/1000); ++i)
+			asm("nop\r\n");
+	}
+}
+
+__attribute__((naked))
+void HardFault_Handler(void)
+{
+	while (1)
+	{
+		drv_ws2812b_transmit(DRV_WS2812B_CHANNEL_STATUS_LED, purple, 3);
+		for (int i = 0; i < (48000000/1000); ++i)
+			asm("nop\r\n");
+	}
 }

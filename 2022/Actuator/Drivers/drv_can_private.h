@@ -12,7 +12,7 @@
 #define CAN0_RX_PIN PIN_PA25
 #define CAN0_RX_MUX MUX_PA25G_CAN0_RX
 
-#define CAN0_RX_FIFO_0_NUM 64 /* receive FIFO, used for messages not matched by a filter into a buffer */
+#define CAN0_RX_FIFO_0_NUM 0 /* receive FIFO, used for messages not matched by a filter into a buffer */
 #define CAN0_RX_FIFO_0_OPERATION_MODE 1 /* 1: overwrite mode */
 #define CAN0_RX_FIFO_0_HIGH_WATER_INT_LEVEL 0 /* 0: interrupt disabled */
 #define CAN_RX_FIFO_0_DATA_SIZE CAN_RXESC_F0DS_DATA8_Val /* >8 if CAN_FD */
