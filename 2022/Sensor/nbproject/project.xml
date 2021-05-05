@@ -23,6 +23,22 @@
                     <name>SBFront1</name>
                     <type>2</type>
                 </confElem>
+                <confElem>
+                    <name>SBFront2</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBRear1</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBRear2</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBCG</name>
+                    <type>2</type>
+                </confElem>
             </confList>
             <formatting>
                 <project-formatting-style>false</project-formatting-style>
