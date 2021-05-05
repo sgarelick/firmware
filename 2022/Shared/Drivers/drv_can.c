@@ -375,9 +375,9 @@ static int read_psr_update_err(can_registers_t * bus)
 	}
 #endif
 #if ENABLE_CAN1
-	if (bus == CAN0_REGS && error != 7)
+	if (bus == CAN1_REGS && error != 7)
 	{
-		can_lec0 = error; 
+		can_lec1 = error; 
 	}
 #endif
 	return psr;
@@ -403,7 +403,7 @@ int drv_can_read_lec(can_registers_t * bus)
 	}
 #endif
 #if ENABLE_CAN1
-	if (bus == CAN0_REGS)
+	if (bus == CAN1_REGS)
 	{
 		return can_lec1; 
 	}
