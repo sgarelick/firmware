@@ -40,7 +40,11 @@ static void ControlTask()
 	
 	while (1)
 	{ 
-		
+		// Fault recovery
+		if (drv_can_is_bus_off(CAN0_REGS))
+		{
+			drv_can_recover_from_bus_off(CAN0_REGS);
+		}
 		// Read CAN signal
 		if (drv_can_check_rx_buffer(CAN0_REGS, DRV_CAN_RX_BUFFER_VEHICLE_UI_INPUTS))
 		{

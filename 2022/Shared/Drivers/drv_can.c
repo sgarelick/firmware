@@ -325,27 +325,29 @@ bool drv_can_pop_fifo_0(can_registers_t * bus, struct drv_can_rx_fifo_0_element 
 	}
 	if (f0gi != f0pi)
 	{
+#if ENABLE_CAN0 && CAN0_RX_FIFO_0_NUM > 0
 		if (bus == CAN0_REGS)
 		{
 			memcpy(output, &can0_rx_fifo_0[f0gi], sizeof(struct drv_can_rx_fifo_0_element));
+			bus->CAN_RXF0A = CAN_RXF0A_F0AI(f0gi);
+			return true;
 		}
-		else
+#endif
+#if ENABLE_CAN1 && CAN1_RX_FIFO_0_NUM > 0
+		if (bus == CAN1_REGS)
 		{
 			memcpy(output, &can1_rx_fifo_0[f0gi], sizeof(struct drv_can_rx_fifo_0_element));
+			bus->CAN_RXF0A = CAN_RXF0A_F0AI(f0gi);
+			return true;
 		}
-		bus->CAN_RXF0A = CAN_RXF0A_F0AI(f0gi);
-		return true;
+#endif
 	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
 
 void drv_can_nuke_fifo_0(can_registers_t * bus)
 {
 	uint32_t rxf0s = bus->CAN_RXF0S;
-	uint32_t f0gi = (rxf0s & CAN_RXF0S_F0GI_Msk) >> CAN_RXF0S_F0GI_Pos;
 	uint32_t f0pi = (rxf0s & CAN_RXF0S_F0PI_Msk) >> CAN_RXF0S_F0PI_Pos;
 	uint32_t new = (f0pi - 1) & 0x1F;
 	bus->CAN_RXF0A = CAN_RXF0A_F0AI(new);
@@ -354,4 +356,14 @@ void drv_can_nuke_fifo_0(can_registers_t * bus)
 void drv_can_reset_timestamp(can_registers_t * bus)
 {
 	*((__IO  uint32_t *)&bus->CAN_TSCV) = 0;
+}
+
+bool drv_can_is_bus_off(can_registers_t * bus)
+{
+	return (bus->CAN_PSR & CAN_PSR_BO_Msk) >> CAN_PSR_BO_Pos;
+}
+
+void drv_can_recover_from_bus_off(can_registers_t * bus)
+{
+	bus->CAN_CCCR &= ~CAN_CCCR_INIT(1);
 }

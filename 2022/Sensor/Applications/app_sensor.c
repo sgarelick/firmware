@@ -33,6 +33,11 @@ static void MeasurementTask()
 	
 	while (1)
 	{
+		// Fault recovery
+		if (drv_can_is_bus_off(CAN0_REGS))
+		{
+			drv_can_recover_from_bus_off(CAN0_REGS);
+		}
 		// Kick off ADC measurement and block
 		// This takes 3.4ms to return with ADC_AVGCTRL at 512.
 		drv_adc_read_sequence_sync(&results);

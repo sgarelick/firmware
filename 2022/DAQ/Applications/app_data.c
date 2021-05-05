@@ -132,6 +132,15 @@ static inline void reset_tscv_epoch(void)
 const struct app_data_message * app_data_pop_fifo(void)
 {
 	const struct app_data_message * result;
+	// Error recovery
+	if (drv_can_is_bus_off(CAN0_REGS))
+	{
+		drv_can_recover_from_bus_off(CAN0_REGS);
+	}
+	if (drv_can_is_bus_off(CAN1_REGS))
+	{
+		drv_can_recover_from_bus_off(CAN1_REGS);
+	}
 	if (drv_can_pop_fifo_0(CAN0_REGS, &app_data_data.fifo_tmp))
 	{
 		if ((result = insert_into_buffer()) != NULL)
