@@ -86,15 +86,19 @@ static const struct app_data_message * insert_into_buffer()
 		if (app_data_data.buffer[i].id == id || app_data_data.buffer[i].id == 0)
 		{
 			app_data_data.buffer[i].id = id;
-			if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 500)
+			int ms = rxts_to_ms();
+			if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 2000)
 			{
 				// Get highly accurate tick count
-				app_data_data.buffer[i].timestamp_ms = app_data_data.tscv_epoch + rxts_to_ms();
-			}
-			else if ((xTaskGetTickCount() - app_data_data.tscv_epoch) < 2000)
-			{
-				// Was probably captured with the previous epoch
-				app_data_data.buffer[i].timestamp_ms = app_data_data.prev_epoch + rxts_to_ms();
+				if (app_data_data.tscv_epoch + ms > xTaskGetTickCount() + 10)
+				{
+					// If the calculated time is in the future, we should use the old epoch
+					app_data_data.buffer[i].timestamp_ms = app_data_data.prev_epoch + ms;
+				}
+				else
+				{
+					app_data_data.buffer[i].timestamp_ms = app_data_data.tscv_epoch + ms;
+				}
 			}
 			else
 			{
