@@ -28,7 +28,6 @@ static inline int servo_degrees_to_us(int deg)
 
 
 xTaskHandle ControlTaskID;
-#if 1
 static void ControlTask()
 {
 	TickType_t xLastWakeTime;
@@ -89,9 +88,7 @@ static void ControlTask()
 		{
 			// Return outputs to safety positions
 			PORT_REGS->GROUP[0].PORT_OUTCLR = SHIFT_UP_PORT | SHIFT_DOWN_PORT;
-			drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_FRONT, SERVO_SAFETY);
-			drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_REAR, SERVO_SAFETY);
-			drv_tcc_set_cc(DRV_TCC_CHANNEL_DRS, DRV_TCC_CHANNEL_DRS_CC_REAR, SERVO_SAFETY);
+			// Don't change the positions of the servos per discussion with Chris, just keep sending the last command
 		}
 
 		// Wait until next scheduled measurement time
@@ -100,29 +97,6 @@ static void ControlTask()
 	
 	vTaskDelete(NULL);
 }
-#else
-static void ControlTask()
-{
-	while (1)
-	{
-		PORT_REGS->GROUP[0].PORT_OUTSET = SHIFT_UP_PORT;
-		PORT_REGS->GROUP[0].PORT_OUTCLR = SHIFT_DOWN_PORT;
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_FRONT, 800);
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_REAR, 2200);
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_DRS, DRV_TCC_CHANNEL_DRS_CC_REAR, 1800);
-		vTaskDelay(3000);
-		PORT_REGS->GROUP[0].PORT_OUTSET = SHIFT_UP_PORT | SHIFT_DOWN_PORT;
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_FRONT, 1500);
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_REAR, 1500);
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_DRS, DRV_TCC_CHANNEL_DRS_CC_REAR, 1500);
-		vTaskDelay(3000);
-		PORT_REGS->GROUP[0].PORT_OUTCLR = SHIFT_UP_PORT | SHIFT_DOWN_PORT;
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_FRONT, 2200);
-		drv_tcc_set_cc(DRV_TCC_CHANNEL_ARB, DRV_TCC_CHANNEL_ARB_CC_REAR, 800);
-		vTaskDelay(3000);
-	}
-}
-#endif
 
 void app_actuator_init(void)
 {

@@ -8,7 +8,8 @@
 #ifndef DRV_TCC_PRIVATE_H
 #define	DRV_TCC_PRIVATE_H
 
-#define SERVO_SAFETY 1500
+// Set to 0 to send no command (keep position), 1500 to return to neutral.
+#define SERVO_SAFETY 0
 
 enum drv_tcc_channel
 {
