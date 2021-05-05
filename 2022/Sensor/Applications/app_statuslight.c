@@ -16,7 +16,6 @@ xTaskHandle StatusTaskID;
 static void StatusTask()
 {
 	TickType_t xLastWakeTime;
-	int lastError = 0;
 	xLastWakeTime = xTaskGetTickCount();
 	
 	// >83 us for ws2812b bringup
@@ -24,15 +23,7 @@ static void StatusTask()
 	while (1)
 	{
 		// Check CAN error status
-		int error = CAN0_REGS->CAN_PSR & CAN_PSR_LEC_Msk;
-		if (error == 7) //  no change
-		{
-			error = lastError;
-		}
-		else
-		{
-			lastError = error;
-		}
+		int error = drv_can_read_lec(CAN0_REGS);
 		
 		if (error == 0)
 		{

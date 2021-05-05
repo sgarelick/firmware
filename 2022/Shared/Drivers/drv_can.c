@@ -358,12 +358,55 @@ void drv_can_reset_timestamp(can_registers_t * bus)
 	*((__IO  uint32_t *)&bus->CAN_TSCV) = 0;
 }
 
+#if ENABLE_CAN0
+static int can_lec0;
+#endif
+#if ENABLE_CAN1
+static int can_lec1;
+#endif
+static int read_psr_update_err(can_registers_t * bus)
+{
+	int psr = bus->CAN_PSR;
+	int error = psr & CAN_PSR_LEC_Msk;
+#if ENABLE_CAN0
+	if (bus == CAN0_REGS && error != 7)
+	{
+		can_lec0 = error; 
+	}
+#endif
+#if ENABLE_CAN1
+	if (bus == CAN0_REGS && error != 7)
+	{
+		can_lec0 = error; 
+	}
+#endif
+	return psr;
+}
+
 bool drv_can_is_bus_off(can_registers_t * bus)
 {
-	return (bus->CAN_PSR & CAN_PSR_BO_Msk) >> CAN_PSR_BO_Pos;
+	return (read_psr_update_err(bus) & CAN_PSR_BO_Msk) >> CAN_PSR_BO_Pos;
 }
 
 void drv_can_recover_from_bus_off(can_registers_t * bus)
 {
 	bus->CAN_CCCR &= ~CAN_CCCR_INIT(1);
+}
+
+int drv_can_read_lec(can_registers_t * bus)
+{
+	read_psr_update_err(bus);
+#if ENABLE_CAN0
+	if (bus == CAN0_REGS)
+	{
+		return can_lec0;
+	}
+#endif
+#if ENABLE_CAN1
+	if (bus == CAN0_REGS)
+	{
+		return can_lec1; 
+	}
+#endif
+	return -1;
 }

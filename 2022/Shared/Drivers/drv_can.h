@@ -226,6 +226,7 @@ void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table
 bool drv_can_pop_fifo_0(can_registers_t * bus, struct drv_can_rx_fifo_0_element * output);
 void drv_can_reset_timestamp(can_registers_t * bus);
 bool drv_can_is_bus_off(can_registers_t * bus);
+int drv_can_read_lec(can_registers_t * bus);
 void drv_can_recover_from_bus_off(can_registers_t * bus);
 
 #define DRV_CAN_STD_FILTER(BUS, MSG) { \
