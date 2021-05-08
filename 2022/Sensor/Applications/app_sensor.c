@@ -33,6 +33,11 @@ static void MeasurementTask()
 	
 	while (1)
 	{
+		// Fault recovery
+		if (drv_can_is_bus_off(CAN0_REGS))
+		{
+			drv_can_recover_from_bus_off(CAN0_REGS);
+		}
 		// Kick off ADC measurement and block
 		// This takes 3.4ms to return with ADC_AVGCTRL at 512.
 		drv_adc_read_sequence_sync(&results);
@@ -64,7 +69,7 @@ static void MeasurementTask()
 		drv_hsd_setChannel(currentChannel);
 		
 		// Queue tx
-		buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_CAN0_signals1);
+		buffer = drv_can_get_tx_buffer(0);
 		if (buffer)
 		{
 			signals1 = (struct signals1_layout *)buffer->DB;
@@ -72,9 +77,9 @@ static void MeasurementTask()
 			signals1->analog2 = measurements.analogSensors[1];
 			signals1->analog3 = measurements.analogSensors[2];
 			signals1->analog4 = measurements.analogSensors[3];
-			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_CAN0_signals1);
+			drv_can_queue_tx_buffer(CAN0_REGS, 0);
 		}
-		buffer = drv_can_get_tx_buffer(DRV_CAN_TX_BUFFER_CAN0_signals2);
+		buffer = drv_can_get_tx_buffer(1);
 		if (buffer)
 		{
 			signals2 = (struct signals2_layout *)buffer->DB;
@@ -86,7 +91,7 @@ static void MeasurementTask()
 			signals2->fault4 = measurements.individualFaults[DRV_HSD_CHANNEL_SENSOR_456];
 			signals2->allFaults = measurements.totalFaults;
 			signals2->totalCurrent = measurements.totalCurrent;
-			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_CAN0_signals2);
+			drv_can_queue_tx_buffer(CAN0_REGS, 1);
 		}
 
 		// Wait until next scheduled measurement time

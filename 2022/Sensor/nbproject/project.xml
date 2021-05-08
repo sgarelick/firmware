@@ -13,15 +13,30 @@
             <sourceEncoding>UTF-8</sourceEncoding>
             <make-dep-projects/>
             <sourceRootList>
-                <sourceRootElem>Applications</sourceRootElem>
-                <sourceRootElem>Drivers</sourceRootElem>
                 <sourceRootElem>../Shared/RTOS</sourceRootElem>
                 <sourceRootElem>../Shared/Applications</sourceRootElem>
                 <sourceRootElem>../Shared/Drivers</sourceRootElem>
+                <sourceRootElem>.</sourceRootElem>
             </sourceRootList>
             <confList>
                 <confElem>
                     <name>SBFront1</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBFront2</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBRear1</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBRear2</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>SBCG</name>
                     <type>2</type>
                 </confElem>
             </confList>

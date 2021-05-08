@@ -2,6 +2,7 @@
 
 #include "sam.h"
 #include "config.h"
+#include "vehicle.h"
 
 #define ENABLE_CAN0 1
 #define ENABLE_CAN1 0
@@ -31,34 +32,27 @@ enum drv_can_rx_buffer_table {
 
 // Send two messages with sensor signal information
 enum drv_can_tx_buffer_table {
-	DRV_CAN_TX_BUFFER_CAN0_signals1,
-	DRV_CAN_TX_BUFFER_CAN0_signals2,
+#if BOARD_USAGE == SBFront1
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS1,
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT1_SIGNALS2,
+#elif BOARD_USAGE == SBFront2
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT2_SIGNALS1,
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_FRONT2_SIGNALS2,
+#elif BOARD_USAGE == SBRear1
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_REAR1_SIGNALS1,
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_REAR1_SIGNALS2,
+#elif BOARD_USAGE == SBRear2
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_REAR2_SIGNALS1,
+	DRV_CAN_TX_BUFFER_VEHICLE_SB_REAR2_SIGNALS2,
+#elif BOARD_USAGE == SBCG
+	DRV_CAN_TX_BUFFER_VEHICLE_SBCG_SIGNALS1,
+	DRV_CAN_TX_BUFFER_VEHICLE_SBCG_SIGNALS2,
+#else
+#error "Unknown BOARD_USAGE"
+#endif
 	
 	DRV_CAN_TX_BUFFER_COUNT
 };
-
-// Set CAN message IDs based on sensor board usage ID
-#if BOARD_USAGE == SBFront1
-#define ID_signals1 0x001
-#define ID_signals2 0x002
-#elif BOARD_USAGE == SBFront2
-#define ID_signals1 0x003
-#define ID_signals2 0x004
-#elif BOARD_USAGE == SBRear1
-#define ID_signals1 0x005
-#define ID_signals2 0x006
-#elif BOARD_USAGE == SBRear2
-#define ID_signals1 0x007
-#define ID_signals2 0x008
-#elif BOARD_USAGE == SBCG
-#define ID_signals1 0x009
-#define ID_signals2 0x00A
-#endif
-
-#define EXT_signals1 1
-#define DLC_signals1 8
-#define EXT_signals2 1
-#define DLC_signals2 8
 
 #define CAN0_STANDARD_FILTERS_NUM 0
 #define CAN0_EXTENDED_FILTERS_NUM DRV_CAN_RX_BUFFER_COUNT

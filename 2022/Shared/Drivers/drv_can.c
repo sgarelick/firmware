@@ -1,5 +1,6 @@
 #include "drv_can.h"
 #include "sam.h"
+#include <string.h>
 
 #if ENABLE_CAN0
 static struct drv_can_standard_filter can0_standard_filters[CAN0_STANDARD_FILTERS_NUM];
@@ -18,6 +19,12 @@ static struct drv_can_tx_buffer_element can_tx_buffers[DRV_CAN_TX_BUFFER_COUNT];
 
 void drv_can_init(void)
 {
+#ifdef CAN0_STBY_PIN
+	PORT_REGS->GROUP[CAN0_STBY_PIN / 32].PORT_DIRSET = 1 << (CAN0_STBY_PIN % 32);
+#endif
+#ifdef CAN1_STBY_PIN
+	PORT_REGS->GROUP[CAN1_STBY_PIN / 32].PORT_DIRSET = 1 << (CAN1_STBY_PIN % 32);
+#endif
 	// set up CAN supplying clock generator at 8MHz
 	GCLK_REGS->GCLK_GENCTRL[8] =
 			GCLK_GENCTRL_GENEN(1) | GCLK_GENCTRL_SRC_OSC48M | GCLK_GENCTRL_DIV(6) |
@@ -178,11 +185,18 @@ void drv_can_init(void)
 		//CAN0_REGS->CAN_NBTP = ...;
 #if ENABLE_CAN0
 	// enable timestamping. we should reset TSCV every ms so we know correct microsecond timing or something like that
-	CAN0_REGS->CAN_TSCC = CAN_TSCC_TSS_INC;
+	CAN0_REGS->CAN_TSCC = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);
 #endif
 #if ENABLE_CAN1
 	// enable timestamping. we should reset TSCV every ms so we know correct microsecond timing or something like that
-	CAN1_REGS->CAN_TSCC = CAN_TSCC_TSS_INC;
+	CAN1_REGS->CAN_TSCC = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);
+#endif
+#if ENABLE_CAN0
+	// disable automatic retransmission. ethan found that it makes things better
+	CAN0_REGS->CAN_CCCR |= CAN_CCCR_DAR(1);
+#endif
+#if ENABLE_CAN1
+	CAN1_REGS->CAN_CCCR |= CAN_CCCR_DAR(1);
 #endif
 #if ENABLE_CAN0
 	// enable interrupts. for now on all received messages
@@ -208,13 +222,12 @@ void drv_can_init(void)
 	// general filter configuration. accept nonmatching into FIFO 0. reject remote.
 	CAN1_REGS->CAN_GFC = CAN_GFC_ANFS_RXF0 | CAN_GFC_ANFE_RXF0 | CAN_GFC_RRFS(1) | CAN_GFC_RRFE(1);
 #endif
-	
 	// drop out of configuration mode and start
 #if ENABLE_CAN0
-	CAN0_REGS->CAN_CCCR = 0;
+	CAN0_REGS->CAN_CCCR &= ~(CAN_CCCR_INIT(1) | CAN_CCCR_CCE(1));
 #endif
 #if ENABLE_CAN1
-	CAN1_REGS->CAN_CCCR = 0;
+	CAN1_REGS->CAN_CCCR &= ~(CAN_CCCR_INIT(1) | CAN_CCCR_CCE(1));
 #endif
 }
 
@@ -297,4 +310,103 @@ void drv_can_clear_rx_buffer(can_registers_t * bus, enum drv_can_rx_buffer_table
 			bus->CAN_NDAT2 = (1 << (id - 32));
 		}
 	}
+}
+
+bool drv_can_pop_fifo_0(can_registers_t * bus, struct drv_can_rx_fifo_0_element * output)
+{
+	uint32_t rxf0s = bus->CAN_RXF0S;
+	uint32_t f0gi = (rxf0s & CAN_RXF0S_F0GI_Msk) >> CAN_RXF0S_F0GI_Pos;
+	uint32_t f0pi = (rxf0s & CAN_RXF0S_F0PI_Msk) >> CAN_RXF0S_F0PI_Pos;
+	bool f0f = (rxf0s & CAN_RXF0S_F0F_Msk) >> CAN_RXF0S_F0F_Pos;
+	uint32_t f0fl = (rxf0s & CAN_RXF0S_F0FL_Msk) >> CAN_RXF0S_F0FL_Pos;
+	if (f0f)
+	{
+		f0gi = (f0gi + 2) % f0fl;
+	}
+	if (f0gi != f0pi)
+	{
+#if ENABLE_CAN0 && CAN0_RX_FIFO_0_NUM > 0
+		if (bus == CAN0_REGS)
+		{
+			memcpy(output, &can0_rx_fifo_0[f0gi], sizeof(struct drv_can_rx_fifo_0_element));
+			bus->CAN_RXF0A = CAN_RXF0A_F0AI(f0gi);
+			return true;
+		}
+#endif
+#if ENABLE_CAN1 && CAN1_RX_FIFO_0_NUM > 0
+		if (bus == CAN1_REGS)
+		{
+			memcpy(output, &can1_rx_fifo_0[f0gi], sizeof(struct drv_can_rx_fifo_0_element));
+			bus->CAN_RXF0A = CAN_RXF0A_F0AI(f0gi);
+			return true;
+		}
+#endif
+	}
+	return false;
+}
+
+void drv_can_nuke_fifo_0(can_registers_t * bus)
+{
+	uint32_t rxf0s = bus->CAN_RXF0S;
+	uint32_t f0pi = (rxf0s & CAN_RXF0S_F0PI_Msk) >> CAN_RXF0S_F0PI_Pos;
+	uint32_t new = (f0pi - 1) & 0x1F;
+	bus->CAN_RXF0A = CAN_RXF0A_F0AI(new);
+}
+
+void drv_can_reset_timestamp(can_registers_t * bus)
+{
+	*((__IO  uint32_t *)&bus->CAN_TSCV) = 0;
+}
+
+#if ENABLE_CAN0
+static int can_lec0;
+#endif
+#if ENABLE_CAN1
+static int can_lec1;
+#endif
+static int read_psr_update_err(can_registers_t * bus)
+{
+	int psr = bus->CAN_PSR;
+	int error = psr & CAN_PSR_LEC_Msk;
+#if ENABLE_CAN0
+	if (bus == CAN0_REGS && error != 7)
+	{
+		can_lec0 = error; 
+	}
+#endif
+#if ENABLE_CAN1
+	if (bus == CAN1_REGS && error != 7)
+	{
+		can_lec1 = error; 
+	}
+#endif
+	return psr;
+}
+
+bool drv_can_is_bus_off(can_registers_t * bus)
+{
+	return (read_psr_update_err(bus) & CAN_PSR_BO_Msk) >> CAN_PSR_BO_Pos;
+}
+
+void drv_can_recover_from_bus_off(can_registers_t * bus)
+{
+	bus->CAN_CCCR &= ~CAN_CCCR_INIT(1);
+}
+
+int drv_can_read_lec(can_registers_t * bus)
+{
+	read_psr_update_err(bus);
+#if ENABLE_CAN0
+	if (bus == CAN0_REGS)
+	{
+		return can_lec0;
+	}
+#endif
+#if ENABLE_CAN1
+	if (bus == CAN1_REGS)
+	{
+		return can_lec1; 
+	}
+#endif
+	return -1;
 }

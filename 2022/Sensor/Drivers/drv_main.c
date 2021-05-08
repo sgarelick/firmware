@@ -13,6 +13,7 @@ void drv_init(void)
 #if (BOARD_ID == EL_04002_22)
 	// Mitigate SWCLK errata
 	PORT_REGS->GROUP[0].PORT_PINCFG[SWDCLK_PIN] = PORT_PINCFG_PULLEN(1) | PORT_PINCFG_PMUXEN(1);
+	PORT_REGS->GROUP[0].PORT_OUTSET = 1<<SWDCLK_PIN;
 #endif
 	drv_clock_init();
 	drv_adc_init();

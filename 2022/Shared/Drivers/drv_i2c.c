@@ -112,11 +112,20 @@ int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_
 	// send address on bus, write mode
 	module->SERCOM_ADDR = SERCOM_I2CM_ADDR_ADDR((address << 1) | 0);
 	// wait
+	while (module->SERCOM_SYNCBUSY & SERCOM_I2CM_SYNCBUSY_SYSOP_Msk)
+	{
+	}
 	while (!(module->SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_MB_Msk))
 	{
 	}
 	// check errors
 	if (module->SERCOM_INTFLAG & (SERCOM_I2CM_INTFLAG_ERROR(1)))
+	{
+		module->SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
+		module->SERCOM_INTFLAG = 0xFF;
+		return 0;
+	}
+	if (module->SERCOM_STATUS & SERCOM_I2CM_STATUS_RXNACK_Msk)
 	{
 		module->SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
 		module->SERCOM_INTFLAG = 0xFF;
@@ -129,6 +138,9 @@ int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_
 	for (int i = 0; i < length; ++i)
 	{
 		// wait
+		while (module->SERCOM_SYNCBUSY & SERCOM_I2CM_SYNCBUSY_SYSOP_Msk)
+		{
+		}
 		while (!(module->SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_MB_Msk))
 		{
 		}
@@ -144,11 +156,17 @@ int drv_i2c_write_register(enum drv_i2c_channel channel, uint8_t address, uint8_
 	}
 
 	// wait
+	while (module->SERCOM_SYNCBUSY & SERCOM_I2CM_SYNCBUSY_SYSOP_Msk)
+	{
+	}
 	while (!(module->SERCOM_INTFLAG & SERCOM_I2CM_INTFLAG_MB_Msk))
 	{
 	}
 	// send stop condition
 	module->SERCOM_CTRLB = SERCOM_I2CM_CTRLB_CMD(3);
 	module->SERCOM_INTFLAG = 0xFF;
+	while (module->SERCOM_SYNCBUSY & SERCOM_I2CM_SYNCBUSY_SYSOP_Msk)
+	{
+	}
 	return length;
 }
