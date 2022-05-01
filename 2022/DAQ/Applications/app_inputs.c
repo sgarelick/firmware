@@ -7,7 +7,7 @@
 #include "app_datalogger.h"
 #include "drv_can.h"
 
-#define DELAY_PERIOD 50
+#define DELAY_PERIOD 20
 #define APP_INPUTS_PRIORITY 4
 
 static const struct {
@@ -16,16 +16,17 @@ static const struct {
 		uint8_t pin;
 		uint32_t port;
 		uint8_t pincfg;
+		uint32_t maxActiveTimeMs;
 	} digital[APP_INPUTS_DIGITAL_COUNT];
 } app_inputs_config = {
 	.digital = {
-		[APP_INPUTS_DRS_L]		= { 0, PIN_PA00, PORT_PA00, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1) },
-		[APP_INPUTS_DRS_R]		= { 0, PIN_PA01, PORT_PA01, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1) },
-		[APP_INPUTS_FUSE]		= { 0, PIN_PA04, PORT_PA04, PORT_PINCFG_INEN(1) },
-		[APP_INPUTS_MISC_L]		= { 0, PIN_PA27, PORT_PA27, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1) },
-		[APP_INPUTS_MISC_R]		= { 0, PIN_PA28, PORT_PA28, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1) },
-		[APP_INPUTS_SHIFT_DOWN]	= { 1, PIN_PB02, PORT_PB02, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1) },
-		[APP_INPUTS_SHIFT_UP]	= { 1, PIN_PB03, PORT_PB03, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1) },
+		[APP_INPUTS_DRS_L]		= { 0, PIN_PA00, PORT_PA00, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1), 0 },
+		[APP_INPUTS_DRS_R]		= { 0, PIN_PA01, PORT_PA01, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1), 0 },
+		[APP_INPUTS_FUSE]		= { 0, PIN_PA04, PORT_PA04, PORT_PINCFG_INEN(1),						 0 },
+		[APP_INPUTS_MISC_L]		= { 0, PIN_PA27, PORT_PA27, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1), 0 },
+		[APP_INPUTS_MISC_R]		= { 0, PIN_PA28, PORT_PA28, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1), 0 },
+		[APP_INPUTS_SHIFT_DOWN]	= { 1, PIN_PB02, PORT_PB02, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1), 200 },
+		[APP_INPUTS_SHIFT_UP]	= { 1, PIN_PB03, PORT_PB03, PORT_PINCFG_INEN(1) | PORT_PINCFG_PULLEN(1), 200 },
 	},
 };
 
@@ -39,6 +40,7 @@ static struct app_inputs_data
 	} dials[NUM_DIALS];
 	struct app_inputs_data_digital {
 		bool active, last;
+		uint32_t lastActiveStartMs;
 	} digital[APP_INPUTS_DIGITAL_COUNT];
 	StaticTask_t rtos_task_id;
 	StackType_t  rtos_stack[STACK_SIZE];
@@ -49,9 +51,18 @@ int app_inputs_get_dial(enum app_inputs_analog dial)
 	return app_inputs_data.dials[dial].position;
 }
 
-bool app_inputs_get_button(enum app_inputs_digital button)
+bool app_inputs_get_button(enum app_inputs_digital channel)
 {
-	return app_inputs_data.digital[button].active;
+	const struct app_inputs_config_digital * config = &app_inputs_config.digital[channel];
+	struct app_inputs_data_digital * data = &app_inputs_data.digital[channel];
+	
+	bool active = app_inputs_data.digital[channel].active;
+
+	if ((config->maxActiveTimeMs > 0U) && (data->active) && ((xTaskGetTickCount() - data->lastActiveStartMs) >= config->maxActiveTimeMs))
+	{
+		active = false;
+	}
+	return active;
 }
 
 static int rotaryPosition(uint16_t counts)
@@ -117,6 +128,10 @@ static void app_inputs_task()
 				if (reading == data->last)
 				{
 					data->active = reading;
+					if (data->active)
+					{
+						data->lastActiveStartMs = xLastWakeTime;
+					}
 				}
 				data->last = reading;
 			}
