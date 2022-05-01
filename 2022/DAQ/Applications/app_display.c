@@ -524,9 +524,9 @@ static void app_display_task()
 	display_warning(0x1F);
 	vTaskDelay(INIT_DELAY);
 	display_warning(0);
-	display_rpm("\x7F\x7F\x7F\x7F", 0xF);
-	display_gear('\x7F');
-	vTaskDelay(INIT_DELAY);
+	//display_rpm("\x7F\x7F\x7F\x7F", 0xF);
+	//display_gear('\x7F');
+	//vTaskDelay(INIT_DELAY);
 	
 	TickType_t now = xTaskGetTickCount();
 	bool sd_bad, can_bad;

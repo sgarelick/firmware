@@ -179,10 +179,14 @@ void drv_can_init(void)
 	// bit rate timing (currently unused)
 		// With a GCLK_CAN of 8MHz, the reset value 0x00000A33 configures the CAN for a fast bit rate of 500 kBits/s.
 		//CAN0_REGS->CAN_DBTP = ...;
-	
+#if ENABLE_CAN1
 	// nominal bit rate timing and prescaler
 		// With a CAN clock (GCLK_CAN) of 8MHz, the reset value 0x06000A03 configures the CAN for a bit rate of 500 kBits/s.
 		//CAN0_REGS->CAN_NBTP = ...;
+	// Change prescaler from 1 (reset value) to 2, should make this run at 250kbps
+	CAN1_REGS->CAN_NBTP = CAN_NBTP_NSJW(2-1) | CAN_NBTP_NBRP(2-1) | CAN_NBTP_NTSEG1(11-1) | CAN_NBTP_NTSEG2(4-1);
+	CAN1_REGS->CAN_DBTP = CAN_DBTP_DSJW(2-1) | CAN_DBTP_DBRP(2-1) | CAN_DBTP_DTSEG1(11-1) | CAN_DBTP_DTSEG2(4-1);
+#endif
 #if ENABLE_CAN0
 	// enable timestamping. we should reset TSCV every ms so we know correct microsecond timing or something like that
 	CAN0_REGS->CAN_TSCC = CAN_TSCC_TSS_INC | CAN_TSCC_TCP(15);
