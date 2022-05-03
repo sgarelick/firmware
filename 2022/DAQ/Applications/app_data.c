@@ -13,14 +13,16 @@
 
 
 
-#define WRITE_QUEUE_SIZE 32
+#define WRITE_QUEUE_SIZE 4
 #define MESSAGE_BUFFER_SIZE 32
 
 // Raw CAN data
 static struct {
 	struct app_data_message buffer[MESSAGE_BUFFER_SIZE];
+	struct app_data_message fifo[WRITE_QUEUE_SIZE];
 	struct drv_can_rx_fifo_0_element fifo_tmp;
 	TickType_t tscv_epoch, prev_epoch, last_read;
+	volatile uint8_t fifo_wp, fifo_rp;
 } app_data_data = {0};
 
 
@@ -151,7 +153,33 @@ const struct app_data_message * app_data_pop_fifo(void)
 		if ((result = insert_into_buffer()) != NULL)
 			return result;
 	}
+	const uint8_t curr_rp = app_data_data.fifo_rp;
+	if (curr_rp != app_data_data.fifo_wp) // something to read
+	{
+		result = &app_data_data.fifo[curr_rp];
+		app_data_data.fifo_rp = (curr_rp + 1) % WRITE_QUEUE_SIZE;
+		return result;
+	}
+	
 	// No messages to read, might as well clean up
 	reset_tscv_epoch();
 	return NULL;
+}
+
+void app_data_push_fifo(const struct drv_can_tx_buffer_element * element)
+{
+	const uint8_t curr_wp = app_data_data.fifo_wp;
+	const uint8_t next_wp = (curr_wp + 1) % WRITE_QUEUE_SIZE;
+	if ((next_wp != app_data_data.fifo_rp) && (element != NULL)) // still has space left
+	{
+		int id = element->TXBE_0.bit.ID;
+		if (!element->TXBE_0.bit.XTD)
+			id = (id >> 18) & 0x7FF;
+
+		app_data_data.fifo[curr_wp].id = id;
+		app_data_data.fifo[curr_wp].timestamp_ms = xTaskGetTickCount();
+		memcpy(app_data_data.fifo[curr_wp].data, (const uint8_t *)element->DB, 8);
+
+		app_data_data.fifo_wp = next_wp;
+	}
 }

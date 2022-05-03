@@ -5,6 +5,7 @@
 #include "sam.h"
 #include "vehicle.h"
 #include "app_datalogger.h"
+#include "app_data.h"
 #include "drv_can.h"
 
 #define DELAY_PERIOD 20
@@ -151,8 +152,24 @@ static void app_inputs_task()
 				.ui_shift_up_command = app_inputs_get_button(APP_INPUTS_SHIFT_UP),
 			};
 			vehicle_ui_inputs_pack((uint8_t *)buffer->DB, &ui_inputs, 8);
+			app_data_push_fifo(buffer);
 			drv_can_queue_tx_buffer(CAN0_REGS, DRV_CAN_TX_BUFFER_VEHICLE_UI_INPUTS);
 		}
+		
+		struct drv_can_tx_buffer_element debugBuf = {
+			.TXBE_0 = { .bit = {
+				.ID = (VEHICLE_UI_DEBUG_FRAME_ID << 18U),
+				.XTD = 0,
+			}},
+		};
+		struct vehicle_ui_debug_t ui_debug = {
+			.ui_analog_dial1_dbg = app_inputs_data.adc_results.results[0],
+			.ui_analog_dial2_dbg = app_inputs_data.adc_results.results[1],
+			.ui_analog_dial3_dbg = app_inputs_data.adc_results.results[2],
+			.ui_analog_dial4_dbg = app_inputs_data.adc_results.results[3],
+		};
+		vehicle_ui_debug_pack((uint8_t *)debugBuf.DB, &ui_debug, 8);
+		app_data_push_fifo(&debugBuf);
 		
 		vTaskDelayUntil(&xLastWakeTime, DELAY_PERIOD);
 	}

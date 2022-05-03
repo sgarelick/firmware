@@ -25,6 +25,7 @@ void app_data_init(void);
 bool app_data_is_missing(int frame_id);
 bool app_data_read_message(int frame_id, struct app_data_message * output);
 const struct app_data_message * app_data_pop_fifo(void);
+void app_data_push_fifo(const struct drv_can_tx_buffer_element * element);
 bool app_data_read_buffer(int i, struct app_data_message * output);
 
 

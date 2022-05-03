@@ -36,6 +36,12 @@ BS_:
 BU_: CTRL DAQ SBFront1 SBFront2 SBRear1 SBRear2 SBCG
 
 
+BO_ 12 UI_debug: 8 Vector__XXX
+ SG_ UI_analogDial4DBG : 36|12@1+ (1,0) [0|4095] "" Vector__XXX
+ SG_ UI_analogDial3DBG : 24|12@1+ (1,0) [0|4095] "" Vector__XXX
+ SG_ UI_analogDial2DBG : 12|12@1+ (1,0) [0|4095] "" Vector__XXX
+ SG_ UI_analogDial1DBG : 0|12@1+ (1,0) [0|4095] "" Vector__XXX
+
 BO_ 11 UI_inputs: 8 DAQ
  SG_ UI_shiftUpCommand : 1|1@1+ (1,0) [0|1] ""  CTRL
  SG_ UI_shiftDownCommand : 0|1@1+ (1,0) [0|1] ""  CTRL
@@ -47,7 +53,7 @@ BO_ 1 SBFront1_signals1: 8 SBFront1
  SG_ SBFront1_FLshockPots : 32|16@1+ (1,0) [0|0] ""  DAQ
  SG_ SBFront1_pitot : 16|16@1+ (1,0) [0|0] ""  DAQ
  SG_ SBFront1_FbrakePressure : 0|16@1+ (1,0) [0|0] ""  DAQ
- SG_ SBFront1_FLaccelX : 48|16@1+ (1,0) [0|0] ""  DAQ
+ SG_ SBFront1_FLaccelX : 48|16@1- (0.000190730497806599,-6.24966622162884) [-5|5] "g"  DAQ
 
 BO_ 2 SBFront1_signals2: 8 SBFront1
  SG_ SBFront1_FLaccelZ : 16|16@1+ (1,0) [0|0] ""  DAQ
