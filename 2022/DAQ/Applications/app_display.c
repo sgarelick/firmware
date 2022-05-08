@@ -534,7 +534,7 @@ static void app_display_task()
 		display_rpm("----", 0);
 		display_gear('-');
 		sd_bad = !app_datalogger_read_data();
-		can_bad = app_data_is_missing(VEHICLE_SB_FRONT1_SIGNALS1_FRAME_ID);
+		//can_bad = app_data_is_missing(VEHICLE_SB_FRONT1_SIGNALS1_FRAME_ID);
 		vTaskDelayUntil(&now, 10);
 	} while (now < 5000 && (sd_bad || can_bad));
 	
